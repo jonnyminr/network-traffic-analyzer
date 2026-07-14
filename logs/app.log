@@ -1,0 +1,14 @@
+2026-07-14 17:02:59,506 - NetworkTrafficAnalyzer - INFO - Capture started via GUI.
+2026-07-14 17:02:59,506 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Any with filter: ''
+2026-07-14 17:02:59,507 - NetworkTrafficAnalyzer - ERROR - Capture error: Sniffing and sending packets is not available at layer 2: winpcap is not installed. You may use conf.L3socket or conf.L3socket6 to access layer 3
+2026-07-14 17:02:59,507 - NetworkTrafficAnalyzer - INFO - Capture stopped.
+2026-07-14 17:03:47,367 - NetworkTrafficAnalyzer - INFO - Capture started via GUI.
+2026-07-14 17:03:47,369 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Any with filter: 'tcp 80'
+2026-07-14 17:03:47,369 - NetworkTrafficAnalyzer - ERROR - Capture error: Sniffing and sending packets is not available at layer 2: winpcap is not installed. You may use conf.L3socket or conf.L3socket6 to access layer 3
+2026-07-14 17:03:47,371 - NetworkTrafficAnalyzer - INFO - Capture stopped.
+2026-07-14 17:16:39,817 - NetworkTrafficAnalyzer - INFO - Capture started via GUI.
+2026-07-14 17:16:39,818 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Any with filter: 'tcp port 80'
+2026-07-14 17:18:17,270 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
+2026-07-14 17:23:00,143 - NetworkTrafficAnalyzer - INFO - Capture started via GUI.
+2026-07-14 17:23:00,146 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Any with filter: 'tcp port 80'
+2026-07-14 17:24:24,161 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
