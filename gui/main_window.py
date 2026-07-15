@@ -90,11 +90,11 @@ class MainWindow(QMainWindow):
         self.capture_engine = CaptureEngine(self.current_interface, self.current_bpf)
         
         # Connect signals
-        self.capture_engine.packet_captured.connect(self.packet_table.add_packet)
-        self.capture_engine.stats_updated.connect(self.dashboard.update_stats)
-        self.capture_engine.alerts_generated.connect(self.handle_alerts)
-        self.capture_engine.capture_error.connect(self.handle_error)
-        self.capture_engine.capture_stopped.connect(self.on_capture_stopped)
+        self.capture_engine.packet_captured.connect(self.packet_table.add_packet, Qt.QueuedConnection)
+        self.capture_engine.stats_updated.connect(self.dashboard.update_stats, Qt.QueuedConnection)
+        self.capture_engine.alerts_generated.connect(self.handle_alerts, Qt.QueuedConnection)
+        self.capture_engine.capture_error.connect(self.handle_error, Qt.QueuedConnection)
+        self.capture_engine.capture_stopped.connect(self.on_capture_stopped, Qt.QueuedConnection)
         
         self.capture_engine.start()
         

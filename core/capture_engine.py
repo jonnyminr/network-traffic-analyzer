@@ -1,7 +1,7 @@
 import time
 from typing import Dict, Any, List
 from PySide6.QtCore import QThread, Signal
-from scapy.all import sniff, conf
+from scapy.all import sniff, conf, AsyncSniffer
 
 from core.packet_parser import parse_packet
 from core.stats_aggregator import StatsAggregator
@@ -33,14 +33,24 @@ class CaptureEngine(QThread):
         logger.info(f"Starting capture on interface: {self.interface} with filter: '{self.bpf_filter}'")
         
         try:
-            # We use a custom stop_filter to cleanly exit the sniff loop
-            sniff(
+            sniffer = AsyncSniffer(
                 iface=self.interface if self.interface != "Any" else None,
-                filter=self.bpf_filter,
+                filter=self.bpf_filter if self.bpf_filter else None,
                 prn=self.process_packet,
-                stop_filter=lambda p: not self.is_running,
                 store=False # Don't keep packets in memory (prevents OOM)
             )
+            sniffer.start()
+            
+            while self.is_running:
+                # Sleep for the interval to emit stats at a steady rate
+                time.sleep(self.stats_interval)
+                
+                if self.is_running:
+                    self._emit_stats()
+
+            sniffer.stop()
+            sniffer.join()
+            
         except PermissionError:
             msg = "Permission denied. Please run the application with Administrator/root privileges."
             logger.error(msg)
@@ -67,18 +77,14 @@ class CaptureEngine(QThread):
             # Update stats
             self.stats_aggregator.add_packet(parsed)
 
-        # Check if we should emit stats (once per second)
-        now = time.time()
-        if now - self.last_stats_emit >= self.stats_interval:
-            stats = self.stats_aggregator.get_and_reset_stats()
-            self.stats_updated.emit(stats)
-            
-            # Pass stats to anomaly detector
-            alerts = self.anomaly_detector.process_stats(stats)
-            if alerts:
-                self.alerts_generated.emit(alerts)
-                
-            self.last_stats_emit = now
+    def _emit_stats(self):
+        stats = self.stats_aggregator.get_and_reset_stats()
+        self.stats_updated.emit(stats)
+        
+        # Pass stats to anomaly detector
+        alerts = self.anomaly_detector.process_stats(stats)
+        if alerts:
+            self.alerts_generated.emit(alerts)
 
     def stop(self):
         logger.info("Stop capture requested.")

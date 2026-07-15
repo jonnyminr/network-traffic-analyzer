@@ -13,28 +13,24 @@ def parse_packet(packet: Packet) -> Optional[Dict[str, Any]]:
             
             # Basic info
             parsed = {
-                'timestamp': time.time(), # scapy packet.time is a float, but we can also use time.time()
-                'src_ip': ip_layer.src,
-                'dst_ip': ip_layer.dst,
-                'size': len(packet),
+                'timestamp': float(packet.time) if hasattr(packet, 'time') else time.time(),
+                'src_ip': str(ip_layer.src),
+                'dst_ip': str(ip_layer.dst),
+                'size': int(len(packet)),
                 'protocol': 'Other',
                 'src_port': None,
                 'dst_port': None
             }
             
-            # Timestamp from scapy
-            if hasattr(packet, 'time'):
-                parsed['timestamp'] = float(packet.time)
-
             # Protocol and Ports
             if TCP in packet:
                 parsed['protocol'] = 'TCP'
-                parsed['src_port'] = packet[TCP].sport
-                parsed['dst_port'] = packet[TCP].dport
+                parsed['src_port'] = int(packet[TCP].sport)
+                parsed['dst_port'] = int(packet[TCP].dport)
             elif UDP in packet:
                 parsed['protocol'] = 'UDP'
-                parsed['src_port'] = packet[UDP].sport
-                parsed['dst_port'] = packet[UDP].dport
+                parsed['src_port'] = int(packet[UDP].sport)
+                parsed['dst_port'] = int(packet[UDP].dport)
             elif ICMP in packet:
                 parsed['protocol'] = 'ICMP'
                 

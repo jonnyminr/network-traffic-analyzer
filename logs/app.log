@@ -12,3 +12,21 @@
 2026-07-14 17:23:00,143 - NetworkTrafficAnalyzer - INFO - Capture started via GUI.
 2026-07-14 17:23:00,146 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Any with filter: 'tcp port 80'
 2026-07-14 17:24:24,161 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
+2026-07-15 03:01:57,479 - NetworkTrafficAnalyzer - INFO - Capture started via GUI.
+2026-07-15 03:01:57,482 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Wi-Fi with filter: 'tcp port 80'
+2026-07-15 03:03:20,549 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
+2026-07-15 13:36:54,271 - NetworkTrafficAnalyzer - INFO - Capture started via GUI.
+2026-07-15 13:36:54,273 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Wi-Fi with filter: 'HTTPS port 443'
+2026-07-15 13:37:30,404 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
+2026-07-15 13:37:30,555 - NetworkTrafficAnalyzer - ERROR - Capture error: Cannot set filter: can't parse filter expression: syntax error
+2026-07-15 13:37:30,555 - NetworkTrafficAnalyzer - INFO - Capture stopped.
+2026-07-15 13:44:32,690 - NetworkTrafficAnalyzer - INFO - Capture started via GUI.
+2026-07-15 13:44:32,692 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Wi-Fi with filter: 'HTTPS port 443'
+2026-07-15 13:44:40,805 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
+2026-07-15 13:44:41,733 - NetworkTrafficAnalyzer - ERROR - Capture error: Cannot set filter: can't parse filter expression: syntax error
+2026-07-15 13:44:41,739 - NetworkTrafficAnalyzer - INFO - Capture stopped.
+2026-07-15 13:45:25,510 - NetworkTrafficAnalyzer - INFO - Capture started via GUI.
+2026-07-15 13:45:25,510 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Wi-Fi with filter: 'HTTPS port 443'
+2026-07-15 13:45:43,345 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
+2026-07-15 13:45:43,570 - NetworkTrafficAnalyzer - ERROR - Capture error: Cannot set filter: can't parse filter expression: syntax error
+2026-07-15 13:45:43,574 - NetworkTrafficAnalyzer - INFO - Capture stopped.
