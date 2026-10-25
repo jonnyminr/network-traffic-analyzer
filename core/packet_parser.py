@@ -34,12 +34,15 @@ def parse_packet(packet: Packet) -> Optional[Dict[str, Any]]:
                 parsed['protocol'] = 'TCP'
                 parsed['src_port'] = int(packet[TCP].sport)
                 parsed['dst_port'] = int(packet[TCP].dport)
+                parsed['flags'] = str(packet[TCP].flags)
             elif UDP in packet:
                 parsed['protocol'] = 'UDP'
                 parsed['src_port'] = int(packet[UDP].sport)
                 parsed['dst_port'] = int(packet[UDP].dport)
+                parsed['flags'] = ''
             elif ICMP in packet:
                 parsed['protocol'] = 'ICMP'
+                parsed['flags'] = ''
             elif packet.haslayer('ICMPv6EchoRequest') or packet.haslayer('ICMPv6EchoReply'):
                 parsed['protocol'] = 'ICMP'
                 

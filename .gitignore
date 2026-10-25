@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.pcap
+*.cap
+logs/*.db
+logs/*.db-wal
+logs/*.db-shm
+logs/*.log
+scratch/
+.pytest_cache/

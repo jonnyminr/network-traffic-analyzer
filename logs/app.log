@@ -66,3 +66,36 @@
 2026-10-25 20:49:10,789 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Wi-Fi (Filter: 'port 80 or port 443')
 2026-10-25 20:50:28,780 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
 2026-10-25 20:50:28,840 - NetworkTrafficAnalyzer - INFO - Capture stopped.
+2026-10-25 21:16:28,792 - NetworkTrafficAnalyzer - INFO - Initialized incident database at logs\analyzer.db
+2026-10-25 21:20:57,797 - NetworkTrafficAnalyzer - INFO - Initialized ConnectionTracker (capacity=20000, udp_timeout=30.0s)
+2026-10-25 21:33:51,184 - NetworkTrafficAnalyzer - INFO - Initialized incident database at logs/test_analyzer.db
+2026-10-25 21:33:51,185 - NetworkTrafficAnalyzer - INFO - Initialized AlertManager with persistent SQLite storage and deduplication
+2026-10-25 21:33:51,188 - NetworkTrafficAnalyzer - INFO - Initialized ConnectionTracker (capacity=20000, udp_timeout=30.0s)
+2026-10-25 21:33:51,191 - NetworkTrafficAnalyzer - INFO - Initialized DNSMonitor (capacity=5000)
+2026-10-25 22:09:03,583 - NetworkTrafficAnalyzer - INFO - Initialized incident database at logs/test_analyzer.db
+2026-10-25 22:09:03,584 - NetworkTrafficAnalyzer - INFO - Initialized AlertManager with persistent SQLite storage and deduplication
+2026-10-25 22:09:03,592 - NetworkTrafficAnalyzer - INFO - Initialized ConnectionTracker (capacity=20000, udp_timeout=30.0s)
+2026-10-25 22:09:03,593 - NetworkTrafficAnalyzer - INFO - Initialized DNSMonitor (capacity=5000)
+2026-10-25 22:09:03,595 - NetworkTrafficAnalyzer - INFO - Initialized IncidentManager
+2026-10-25 22:10:45,724 - NetworkTrafficAnalyzer - INFO - Initialized incident database at logs/test_analyzer.db
+2026-10-25 22:10:45,724 - NetworkTrafficAnalyzer - INFO - Initialized AlertManager with persistent SQLite storage and deduplication
+2026-10-25 22:10:45,730 - NetworkTrafficAnalyzer - INFO - Initialized ConnectionTracker (capacity=20000, udp_timeout=30.0s)
+2026-10-25 22:10:45,732 - NetworkTrafficAnalyzer - INFO - Initialized DNSMonitor (capacity=5000)
+2026-10-25 22:10:45,734 - NetworkTrafficAnalyzer - INFO - Initialized IncidentManager
+2026-10-25 22:11:32,387 - NetworkTrafficAnalyzer - INFO - Initialized ConnectionTracker (capacity=20000, udp_timeout=30.0s)
+2026-10-25 22:11:32,440 - NetworkTrafficAnalyzer - INFO - Initialized DNSMonitor (capacity=5000)
+2026-10-25 22:11:32,463 - NetworkTrafficAnalyzer - INFO - Initialized incident database at logs\analyzer.db
+2026-10-25 22:11:32,463 - NetworkTrafficAnalyzer - INFO - Initialized AlertManager with persistent SQLite storage and deduplication
+2026-10-25 22:11:32,477 - NetworkTrafficAnalyzer - INFO - Initialized IncidentManager
+2026-10-25 22:15:47,278 - NetworkTrafficAnalyzer - INFO - Initialized ConnectionTracker (capacity=20000, udp_timeout=30.0s)
+2026-10-25 22:15:47,329 - NetworkTrafficAnalyzer - INFO - Initialized DNSMonitor (capacity=5000)
+2026-10-25 22:15:47,350 - NetworkTrafficAnalyzer - INFO - Initialized incident database at logs\analyzer.db
+2026-10-25 22:15:47,350 - NetworkTrafficAnalyzer - INFO - Initialized AlertManager with persistent SQLite storage and deduplication
+2026-10-25 22:15:47,364 - NetworkTrafficAnalyzer - INFO - Initialized IncidentManager
+2026-10-25 22:16:24,897 - NetworkTrafficAnalyzer - INFO - Initialized incident database at logs\analyzer.db
+2026-10-25 22:16:24,897 - NetworkTrafficAnalyzer - INFO - Initialized AlertManager with persistent SQLite storage and deduplication
+2026-10-25 22:33:55,170 - NetworkTrafficAnalyzer - INFO - Initialized incident database at logs/test_analyzer.db
+2026-10-25 22:33:55,170 - NetworkTrafficAnalyzer - INFO - Initialized AlertManager with persistent SQLite storage and deduplication
+2026-10-25 22:33:55,174 - NetworkTrafficAnalyzer - INFO - Initialized ConnectionTracker (capacity=20000, udp_timeout=30.0s)
+2026-10-25 22:33:55,176 - NetworkTrafficAnalyzer - INFO - Initialized DNSMonitor (capacity=5000)
+2026-10-25 22:33:55,178 - NetworkTrafficAnalyzer - INFO - Initialized IncidentManager

@@ -7,6 +7,9 @@ from scapy.all import conf, AsyncSniffer
 from core.packet_parser import parse_packet
 from core.stats_aggregator import StatsAggregator
 from core.anomaly_detector import AnomalyDetector
+from core.connection_tracker import ConnectionTracker
+from core.dns_monitor import DNSMonitor
+from core.alert_manager import AlertManager
 from utils.interfaces import resolve_scapy_interface
 from utils.logger import logger
 
@@ -116,6 +119,16 @@ class CaptureEngine(QThread):
             self.packet_captured.emit(parsed)
             # Update stats
             self.stats_aggregator.add_packet(parsed)
+            # Update connection flow tracker
+            try:
+                ConnectionTracker().process_packet(parsed, raw_packet)
+            except Exception:
+                pass
+            # Update DNS monitor
+            try:
+                DNSMonitor().process_packet(parsed, raw_packet)
+            except Exception:
+                pass
 
     def _emit_stats(self):
         stats = self.stats_aggregator.get_and_reset_stats()
@@ -124,6 +137,12 @@ class CaptureEngine(QThread):
         # Pass stats to anomaly detector
         alerts = self.anomaly_detector.process_stats(stats)
         if alerts:
+            mgr = AlertManager()
+            for a in alerts:
+                try:
+                    mgr.process_raw_alert(a)
+                except Exception:
+                    pass
             self.alerts_generated.emit(alerts)
 
     def get_raw_packets(self) -> List[Any]:

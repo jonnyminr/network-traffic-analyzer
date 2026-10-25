@@ -1,7 +1,7 @@
 import time
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                                QTableWidget, QTableWidgetItem, QHeaderView, QFrame)
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 import pyqtgraph as pg
 
 # Configure pyqtgraph global options before creating widget instances
@@ -50,6 +50,8 @@ class MetricCard(QFrame):
         self.value_label.setStyleSheet(f"color: {use_color}; font-size: 20px; font-weight: bold;")
 
 class DashboardWidget(QWidget):
+    ip_clicked = Signal(str)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.max_points = 60 # 60 seconds rolling window
@@ -150,9 +152,15 @@ class DashboardWidget(QWidget):
         self.talkers_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.talkers_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.talkers_table.setMinimumHeight(140)
+        self.talkers_table.cellDoubleClicked.connect(self._on_talker_double_clicked)
         bottom_layout.addWidget(self.talkers_table, stretch=1)
         
         main_layout.addLayout(bottom_layout, stretch=2)
+
+    def _on_talker_double_clicked(self, row: int, col: int):
+        item = self.talkers_table.item(row, 1)
+        if item:
+            self.ip_clicked.emit(item.text().strip())
 
     def update_stats(self, stats: dict):
         """

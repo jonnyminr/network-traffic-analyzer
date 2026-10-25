@@ -27,6 +27,15 @@ class StatsAggregator:
         self.window_ip_bytes = collections.defaultdict(int)
         # For port scan detection (source IP -> set of dest ports)
         self.window_ip_ports = collections.defaultdict(set)
+        self.window_dst_ips = set()
+        self.window_dst_ports = set()
+        self.window_tcp_syns = 0
+        self.window_tcp_acks = 0
+        self.window_inbound_bytes = 0
+        self.window_outbound_bytes = 0
+
+    def set_local_ip(self, ip: str):
+        self.local_ip = ip
 
     def reset_all(self):
         """Resets all session and window statistics."""
@@ -46,6 +55,7 @@ class StatsAggregator:
             src_ip = parsed_packet.get('src_ip', '')
             dst_ip = parsed_packet.get('dst_ip', '')
             dst_port = parsed_packet.get('dst_port')
+            flags = str(parsed_packet.get('flags', '')).upper()
             
             # Update cumulative metrics
             self.total_packets += 1
@@ -65,9 +75,25 @@ class StatsAggregator:
                 self.window_ip_bytes[src_ip] += pkt_size
             if dst_ip:
                 self.window_ip_bytes[dst_ip] += pkt_size
+                self.window_dst_ips.add(dst_ip)
             
-            if src_ip and dst_port is not None:
-                self.window_ip_ports[src_ip].add(dst_port)
+            if dst_port is not None:
+                self.window_dst_ports.add(dst_port)
+                if src_ip:
+                    self.window_ip_ports[src_ip].add(dst_port)
+
+            # TCP flags
+            if 'S' in flags:
+                self.window_tcp_syns += 1
+            if 'A' in flags:
+                self.window_tcp_acks += 1
+
+            # Inbound / Outbound classification
+            if hasattr(self, 'local_ip') and self.local_ip:
+                if src_ip == self.local_ip:
+                    self.window_outbound_bytes += pkt_size
+                elif dst_ip == self.local_ip:
+                    self.window_inbound_bytes += pkt_size
 
     def get_and_reset_stats(self) -> Dict[str, Any]:
         """
@@ -103,7 +129,15 @@ class StatsAggregator:
                 'window_protocol_counts': dict(self.window_protocol_counts),
                 'top_talkers': top_talkers,
                 'port_scan_candidates': port_scan_candidates,
-                'unique_src_ips': len(self.window_ip_ports)
+                'unique_src_ips': len(self.window_ip_ports),
+                'unique_dst_ips': len(self.window_dst_ips),
+                'unique_dst_ports': len(self.window_dst_ports),
+                'tcp_syn_count': self.window_tcp_syns,
+                'tcp_ack_count': self.window_tcp_acks,
+                'outbound_bytes': self.window_outbound_bytes,
+                'inbound_bytes': self.window_inbound_bytes,
+                'outbound_rate': self.window_outbound_bytes / duration,
+                'inbound_rate': self.window_inbound_bytes / duration
             }
             
             # Keep recent history for ML/Anomaly detection (last 60 windows)
