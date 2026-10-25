@@ -6,27 +6,63 @@
 2026-07-14 17:03:47,369 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Any with filter: 'tcp 80'
 2026-07-14 17:03:47,369 - NetworkTrafficAnalyzer - ERROR - Capture error: Sniffing and sending packets is not available at layer 2: winpcap is not installed. You may use conf.L3socket or conf.L3socket6 to access layer 3
 2026-07-14 17:03:47,371 - NetworkTrafficAnalyzer - INFO - Capture stopped.
-2026-07-14 17:16:39,817 - NetworkTrafficAnalyzer - INFO - Capture started via GUI.
-2026-07-14 17:16:39,818 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Any with filter: 'tcp port 80'
-2026-07-14 17:18:17,270 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
-2026-07-14 17:23:00,143 - NetworkTrafficAnalyzer - INFO - Capture started via GUI.
-2026-07-14 17:23:00,146 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Any with filter: 'tcp port 80'
-2026-07-14 17:24:24,161 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
-2026-07-15 03:01:57,479 - NetworkTrafficAnalyzer - INFO - Capture started via GUI.
-2026-07-15 03:01:57,482 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Wi-Fi with filter: 'tcp port 80'
-2026-07-15 03:03:20,549 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
-2026-07-15 13:36:54,271 - NetworkTrafficAnalyzer - INFO - Capture started via GUI.
-2026-07-15 13:36:54,273 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Wi-Fi with filter: 'HTTPS port 443'
-2026-07-15 13:37:30,404 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
-2026-07-15 13:37:30,555 - NetworkTrafficAnalyzer - ERROR - Capture error: Cannot set filter: can't parse filter expression: syntax error
-2026-07-15 13:37:30,555 - NetworkTrafficAnalyzer - INFO - Capture stopped.
-2026-07-15 13:44:32,690 - NetworkTrafficAnalyzer - INFO - Capture started via GUI.
-2026-07-15 13:44:32,692 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Wi-Fi with filter: 'HTTPS port 443'
-2026-07-15 13:44:40,805 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
-2026-07-15 13:44:41,733 - NetworkTrafficAnalyzer - ERROR - Capture error: Cannot set filter: can't parse filter expression: syntax error
-2026-07-15 13:44:41,739 - NetworkTrafficAnalyzer - INFO - Capture stopped.
-2026-07-15 13:45:25,510 - NetworkTrafficAnalyzer - INFO - Capture started via GUI.
-2026-07-15 13:45:25,510 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Wi-Fi with filter: 'HTTPS port 443'
-2026-07-15 13:45:43,345 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
-2026-07-15 13:45:43,570 - NetworkTrafficAnalyzer - ERROR - Capture error: Cannot set filter: can't parse filter expression: syntax error
-2026-07-15 13:45:43,574 - NetworkTrafficAnalyzer - INFO - Capture stopped.
+2026-07-17 22:35:26,966 - NetworkTrafficAnalyzer - INFO - Capture started via GUI.
+2026-07-17 22:35:26,967 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Wi-Fi with filter: 'tcp port 80'
+2026-07-17 22:35:39,355 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
+2026-07-17 22:35:40,044 - NetworkTrafficAnalyzer - INFO - Capture stopped.
+2026-07-17 22:35:50,568 - NetworkTrafficAnalyzer - INFO - Capture started via GUI.
+2026-07-17 22:35:50,570 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Local Area Connection* 12 with filter: 'tcp port 80'
+2026-07-17 22:36:00,347 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
+2026-07-17 22:36:00,648 - NetworkTrafficAnalyzer - INFO - Capture stopped.
+2026-07-17 23:57:52,726 - NetworkTrafficAnalyzer - INFO - Capture started via GUI.
+2026-07-17 23:57:52,726 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Wi-Fi with filter: 'tcp port 80'
+2026-07-17 23:58:24,364 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
+2026-07-17 23:58:24,855 - NetworkTrafficAnalyzer - INFO - Capture stopped.
+2026-07-17 23:58:40,561 - NetworkTrafficAnalyzer - INFO - Capture started via GUI.
+2026-07-17 23:58:40,563 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Local Area Connection* 12 with filter: 'tcp port 80'
+2026-07-17 23:58:56,464 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
+2026-07-17 23:58:56,709 - NetworkTrafficAnalyzer - INFO - Capture stopped.
+2026-10-25 19:56:38,048 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Wi-Fi with filter: ''
+2026-10-25 19:56:41,048 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
+2026-10-25 19:56:41,050 - NetworkTrafficAnalyzer - INFO - Capture stopped.
+2026-10-25 19:58:25,037 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Wi-Fi with filter: ''
+2026-10-25 19:58:29,085 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
+2026-10-25 19:58:30,051 - NetworkTrafficAnalyzer - INFO - Capture stopped.
+2026-10-25 19:58:50,698 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Any with filter: ''
+2026-10-25 19:58:52,708 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
+2026-10-25 19:58:53,701 - NetworkTrafficAnalyzer - INFO - Capture stopped.
+2026-10-25 20:13:53,096 - NetworkTrafficAnalyzer - INFO - Capture started via GUI.
+2026-10-25 20:13:53,098 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Wi-Fi (Filter: '')
+2026-10-25 20:13:58,174 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
+2026-10-25 20:13:58,273 - NetworkTrafficAnalyzer - INFO - Capture stopped.
+2026-10-25 20:14:55,946 - NetworkTrafficAnalyzer - INFO - Successfully exported 1 packets to C:\Users\Aryan\.gemini\antigravity-ide\brain\dd2e2d3a-5c68-4f40-a9ca-c06ae5deba6f\scratch\test_export.pcap
+2026-10-25 20:14:55,948 - NetworkTrafficAnalyzer - INFO - Successfully exported 1 stat entries to C:\Users\Aryan\.gemini\antigravity-ide\brain\dd2e2d3a-5c68-4f40-a9ca-c06ae5deba6f\scratch\test_stats.csv
+2026-10-25 20:14:55,948 - NetworkTrafficAnalyzer - INFO - Successfully exported 1 alerts to C:\Users\Aryan\.gemini\antigravity-ide\brain\dd2e2d3a-5c68-4f40-a9ca-c06ae5deba6f\scratch\test_alerts.csv
+2026-10-25 20:18:02,242 - NetworkTrafficAnalyzer - INFO - Capture started via GUI.
+2026-10-25 20:18:02,243 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Wi-Fi (Filter: '')
+2026-10-25 20:18:27,614 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
+2026-10-25 20:18:27,689 - NetworkTrafficAnalyzer - INFO - Capture stopped.
+2026-10-25 20:19:21,594 - NetworkTrafficAnalyzer - INFO - Successfully exported 25 stat entries to C:/Users/Aryan/Downloads/traffic_stats.csv
+2026-10-25 20:39:36,074 - NetworkTrafficAnalyzer - INFO - Resolving domain for Web Traffic capture: www.wikipedia.org
+2026-10-25 20:39:36,090 - NetworkTrafficAnalyzer - INFO - Starting Web Traffic capture on iface: Wi-Fi (Local IP: 192.168.0.108, Target: www.wikipedia.org)
+2026-10-25 20:39:42,543 - NetworkTrafficAnalyzer - INFO - Successfully exported 27 packets to C:\Users\Aryan\.gemini\antigravity-ide\brain\dd2e2d3a-5c68-4f40-a9ca-c06ae5deba6f\scratch\web_test.pcap
+2026-10-25 20:39:42,547 - NetworkTrafficAnalyzer - INFO - Successfully exported 6 stat entries to C:\Users\Aryan\.gemini\antigravity-ide\brain\dd2e2d3a-5c68-4f40-a9ca-c06ae5deba6f\scratch\web_stats_test.csv
+2026-10-25 20:39:42,548 - NetworkTrafficAnalyzer - INFO - Successfully exported 1 connections to C:\Users\Aryan\.gemini\antigravity-ide\brain\dd2e2d3a-5c68-4f40-a9ca-c06ae5deba6f\scratch\web_conns_test.csv
+2026-10-25 20:39:42,549 - NetworkTrafficAnalyzer - INFO - Stop requested for Web Traffic capture.
+2026-10-25 20:39:42,630 - NetworkTrafficAnalyzer - INFO - Web Traffic capture stopped.
+2026-10-25 20:43:26,466 - NetworkTrafficAnalyzer - INFO - Resolving domain for Web Traffic capture: www.wikipedia.org
+2026-10-25 20:43:26,480 - NetworkTrafficAnalyzer - INFO - Starting Web Traffic capture on iface: Wi-Fi (Local IP: 192.168.0.108, Target: www.wikipedia.org)
+2026-10-25 20:43:32,902 - NetworkTrafficAnalyzer - INFO - Successfully exported 39 packets to C:\Users\Aryan\.gemini\antigravity-ide\brain\dd2e2d3a-5c68-4f40-a9ca-c06ae5deba6f\scratch\web_test.pcap
+2026-10-25 20:43:32,904 - NetworkTrafficAnalyzer - INFO - Successfully exported 6 stat entries to C:\Users\Aryan\.gemini\antigravity-ide\brain\dd2e2d3a-5c68-4f40-a9ca-c06ae5deba6f\scratch\web_stats_test.csv
+2026-10-25 20:43:32,906 - NetworkTrafficAnalyzer - INFO - Successfully exported 1 connections to C:\Users\Aryan\.gemini\antigravity-ide\brain\dd2e2d3a-5c68-4f40-a9ca-c06ae5deba6f\scratch\web_conns_test.csv
+2026-10-25 20:43:32,907 - NetworkTrafficAnalyzer - INFO - Stop requested for Web Traffic capture.
+2026-10-25 20:43:32,922 - NetworkTrafficAnalyzer - INFO - Web Traffic capture stopped.
+2026-10-25 20:44:22,963 - NetworkTrafficAnalyzer - WARNING - DNS resolution failed for 'thisdomainwillneverexist123456789xyz.com': getaddrinfo failed
+2026-10-25 20:46:48,027 - NetworkTrafficAnalyzer - INFO - Resolving domain for Web Traffic capture: youtube.com
+2026-10-25 20:46:55,315 - NetworkTrafficAnalyzer - INFO - Starting Web Traffic capture on iface: Wi-Fi (Local IP: 192.168.0.108, Target: youtube.com)
+2026-10-25 20:47:29,050 - NetworkTrafficAnalyzer - INFO - Stop requested for Web Traffic capture.
+2026-10-25 20:47:29,124 - NetworkTrafficAnalyzer - INFO - Web Traffic capture stopped.
+2026-10-25 20:49:10,788 - NetworkTrafficAnalyzer - INFO - Global capture started via GUI.
+2026-10-25 20:49:10,789 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Wi-Fi (Filter: 'port 80 or port 443')
+2026-10-25 20:50:28,780 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
+2026-10-25 20:50:28,840 - NetworkTrafficAnalyzer - INFO - Capture stopped.
