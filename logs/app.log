@@ -99,3 +99,19 @@
 2026-10-25 22:33:55,174 - NetworkTrafficAnalyzer - INFO - Initialized ConnectionTracker (capacity=20000, udp_timeout=30.0s)
 2026-10-25 22:33:55,176 - NetworkTrafficAnalyzer - INFO - Initialized DNSMonitor (capacity=5000)
 2026-10-25 22:33:55,178 - NetworkTrafficAnalyzer - INFO - Initialized IncidentManager
+2026-10-25 22:39:24,393 - NetworkTrafficAnalyzer - INFO - Initialized ConnectionTracker (capacity=20000, udp_timeout=30.0s)
+2026-10-25 22:39:24,440 - NetworkTrafficAnalyzer - INFO - Initialized DNSMonitor (capacity=5000)
+2026-10-25 22:39:24,461 - NetworkTrafficAnalyzer - INFO - Initialized incident database at logs\analyzer.db
+2026-10-25 22:39:24,461 - NetworkTrafficAnalyzer - INFO - Initialized AlertManager with persistent SQLite storage and deduplication
+2026-10-25 22:39:24,472 - NetworkTrafficAnalyzer - INFO - Initialized IncidentManager
+2026-10-25 22:40:36,740 - NetworkTrafficAnalyzer - INFO - Global capture started.
+2026-10-25 22:40:36,741 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Wi-Fi (Filter: '')
+2026-10-25 22:41:19,641 - NetworkTrafficAnalyzer - INFO - Initialized ConnectionTracker (capacity=20000, udp_timeout=30.0s)
+2026-10-25 22:41:19,689 - NetworkTrafficAnalyzer - INFO - Initialized DNSMonitor (capacity=5000)
+2026-10-25 22:41:19,721 - NetworkTrafficAnalyzer - INFO - Initialized incident database at logs\analyzer.db
+2026-10-25 22:41:19,721 - NetworkTrafficAnalyzer - INFO - Initialized AlertManager with persistent SQLite storage and deduplication
+2026-10-25 22:41:19,734 - NetworkTrafficAnalyzer - INFO - Initialized IncidentManager
+2026-10-25 22:41:39,134 - NetworkTrafficAnalyzer - INFO - Global capture started.
+2026-10-25 22:41:39,135 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Wi-Fi (Filter: '')
+2026-10-25 22:41:54,249 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
+2026-10-25 22:41:54,291 - NetworkTrafficAnalyzer - INFO - Capture stopped.
