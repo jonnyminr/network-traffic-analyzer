@@ -10,6 +10,7 @@ class PacketTableWidget(QWidget):
         super().__init__(parent)
         self.max_rows = 1500
         self.packet_buffer = deque()
+        self.row_packets = []
         
         self.init_ui()
         
@@ -65,6 +66,7 @@ class PacketTableWidget(QWidget):
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
+        self.table.cellDoubleClicked.connect(self._on_cell_double_clicked)
         
         layout.addWidget(self.table)
 
@@ -116,6 +118,11 @@ class PacketTableWidget(QWidget):
             
             size = str(pkt.get('size', ''))
             self.table.setItem(row, 6, QTableWidgetItem(size))
+
+            # Store reference to packet dict for double click inspection
+            self.row_packets.append(pkt)
+            if len(self.row_packets) > self.max_rows:
+                self.row_packets.pop(0)
             
             # If a filter is currently active, apply visibility
             if current_filter:
@@ -127,6 +134,17 @@ class PacketTableWidget(QWidget):
         
         if self.autoscroll_check.isChecked():
             self.table.scrollToBottom()
+
+    def add_packet_batch(self, packets: list):
+        """Enqueue an entire batch of packets."""
+        self.packet_buffer.extend(packets)
+
+    def _on_cell_double_clicked(self, row: int, col: int):
+        from gui.packet_details_dialog import PacketDetailsDialog
+        if 0 <= row < len(self.row_packets):
+            pkt_dict = self.row_packets[row]
+            dlg = PacketDetailsDialog(pkt_dict, parent=self)
+            dlg.exec()
 
     def _apply_filter(self, filter_text: str):
         """Filters table rows based on search input."""
@@ -146,5 +164,6 @@ class PacketTableWidget(QWidget):
     def clear_table(self):
         """Clears all packet rows and pending queue."""
         self.packet_buffer.clear()
+        self.row_packets.clear()
         self.table.setRowCount(0)
         self.count_label.setText("Packets: 0")

@@ -375,3 +375,97 @@ class AnomalyDetector:
         self.baseline_outbound.update(outbound_rate)
 
         return alerts
+
+    def process_stats_lightweight(self, stats: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Lightweight anomaly detection executing rule-based and Z-score checks,
+        bypassing computationally heavy IsolationForest ML training and inference.
+        """
+        alerts = []
+        now = stats.get("timestamp", time.time())
+
+        current_bytes = float(stats.get("bytes_per_sec", 0.0))
+        current_pkts = float(stats.get("packets_per_sec", 0.0))
+        outbound_rate = float(stats.get("outbound_rate", 0.0))
+        syn_count = int(stats.get("tcp_syn_count", 0))
+        ack_count = int(stats.get("tcp_ack_count", 0))
+
+        is_warmed_up = self.baseline_bytes.get_stats()["samples"] >= self.warmup_samples
+
+        # 1. Rule-Based: Port Scan
+        port_scan_candidates = stats.get("port_scan_candidates", {})
+        for ip, port_count in port_scan_candidates.items():
+            if port_count >= self.port_scan_threshold:
+                alert_key = f"port_scan_{ip}"
+                if not self._is_in_cooldown(alert_key, now):
+                    self._mark_alert_emitted(alert_key, now)
+                    alerts.append({
+                        "category": "Port Scanning",
+                        "title": "Port Scan Probing Activity",
+                        "detection_method": "Rule-Based Port Counter",
+                        "src_ip": ip,
+                        "dst_ip": "Multiple",
+                        "src_port": 0,
+                        "dst_port": 0,
+                        "anomaly_score": float(port_count),
+                        "current_rate": f"{port_count} distinct ports/window",
+                        "baseline_rate": f"<{self.port_scan_threshold} ports",
+                        "explanation": f"Single source host probed {port_count} distinct destination ports within a 1-second measurement window.",
+                        "recommended_action": f"Inspect firewall logs and examine connections from {ip}.",
+                        "port_count": port_count,
+                        "timestamp": now
+                    })
+
+        # 2. Rule-Based: SYN Flood
+        if syn_count >= 20 and ack_count <= max(2, int(syn_count * 0.15)):
+            alert_key = "syn_flood_detected"
+            if not self._is_in_cooldown(alert_key, now):
+                self._mark_alert_emitted(alert_key, now)
+                alerts.append({
+                    "category": "Repeated Connection Attempts",
+                    "title": "High SYN-to-ACK Disparity (Possible SYN Flood / Retries)",
+                    "detection_method": "TCP Flag Heuristic",
+                    "src_ip": "Multiple",
+                    "dst_ip": "Local/Target",
+                    "anomaly_score": float(syn_count),
+                    "current_rate": f"{syn_count} SYNs vs {ack_count} ACKs",
+                    "baseline_rate": "Balanced SYN/ACK handshake",
+                    "explanation": f"Observed {syn_count} TCP SYN packets with only {ack_count} ACK acknowledgments.",
+                    "recommended_action": "Check Connection Explorer for SYN_SENT / half-open flows.",
+                    "timestamp": now
+                })
+
+        # 3. Statistical Anomaly: Bandwidth Spikes
+        if is_warmed_up:
+            z_score, method_name = self.baseline_bytes.compute_z_score(current_bytes)
+            b_stats = self.baseline_bytes.get_stats()
+            mean_kb = b_stats["mean"] / 1024.0
+            cur_kb = current_bytes / 1024.0
+            if z_score >= self.z_score_threshold and current_bytes >= 15000.0:
+                alert_key = "bandwidth_spike"
+                if not self._is_in_cooldown(alert_key, now):
+                    self._mark_alert_emitted(alert_key, now)
+                    top_ip = "Unknown"
+                    if stats.get("top_talkers"):
+                        top_ip = stats["top_talkers"][0][0]
+                    alerts.append({
+                        "category": "Bandwidth Spike",
+                        "title": "Unusual Bandwidth Spike",
+                        "detection_method": method_name,
+                        "src_ip": top_ip,
+                        "dst_ip": "Network",
+                        "anomaly_score": round(z_score, 2),
+                        "current_rate": f"{cur_kb:.2f} KB/s",
+                        "baseline_rate": f"{mean_kb:.2f} KB/s (μ)",
+                        "explanation": f"Current throughput ({cur_kb:.2f} KB/s) significantly exceeded baseline ({mean_kb:.2f} KB/s).",
+                        "recommended_action": "Inspect Top Talkers to identify the host.",
+                        "timestamp": now
+                    })
+
+        # Update rolling baselines
+        self.baseline_bytes.update(current_bytes)
+        self.baseline_pkts.update(current_pkts)
+        self.baseline_outbound.update(outbound_rate)
+
+        return alerts
+

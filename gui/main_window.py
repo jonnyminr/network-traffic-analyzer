@@ -3,7 +3,8 @@ import ctypes
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QToolBar, QStatusBar, QMessageBox, 
-    QFileDialog, QLabel, QTabWidget, QPushButton
+    QFileDialog, QLabel, QTabWidget, QPushButton,
+    QStackedWidget, QComboBox
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
@@ -13,42 +14,54 @@ from core.capture_engine import CaptureEngine
 from core.connection_tracker import ConnectionTracker
 from core.alert_manager import AlertManager
 from core.incident_manager import IncidentManager
+from core.incident_db import IncidentDatabase
+from core.capture_profiles import DEFAULT_PROFILE
+
 from gui.dashboard_widget import DashboardWidget
+from gui.network_health_widget import NetworkHealthWidget
+from gui.web_traffic_widget import WebTrafficWidget
 from gui.packet_table_widget import PacketTableWidget
 from gui.connection_explorer_widget import ConnectionExplorerWidget
-from gui.web_traffic_widget import WebTrafficWidget
 from gui.dns_insights_widget import DNSInsightsWidget
 from gui.alerts_panel import AlertsPanel
 from gui.investigation_widget import InvestigationWidget
-from gui.settings_dialog import SettingsDialog, SettingsWidget
-from gui.ip_threat_intel_dialog import IPThreatIntelDialog
+from gui.offline_analysis_widget import OfflineAnalysisWidget
+from gui.settings_dialog import SettingsWidget
+from gui.simple_mode_widget import SimpleModeWidget
 from utils.interfaces import get_best_interface
-from utils.exporter import export_to_pcap, export_stats_to_csv, export_alerts_to_csv
+from utils.exporter import export_to_pcap, export_stats_to_csv
 from utils.logger import logger
 
 
 class MainWindow(QMainWindow):
     """
-    Main Application Window providing 8 cybersecurity navigation sections:
-    1. Dashboard (KPIs, bandwidth/packet rate graphs, protocols, top talkers)
-    2. Packet Inspector (Deep packet inspection, search, raw bytes)
-    3. Network Connections (L4 flow tracking, TCP states, volume, threat intel)
-    4. Web Traffic (Target website domain monitor)
-    5. DNS Insights (Observable DNS transactions, domain analysis, encrypted hints)
-    6. Security Alerts (Intelligent deduplicated incidents, evidence modal)
-    7. Investigations (Formal case studio, timeline, correlated evidence, reports)
-    8. Settings (Interface, BPF presets, anomaly thresholds, API keys)
+    Main Application Window providing 10 cybersecurity and network analysis sections:
+    1. Dashboard (KPIs, graphs, protocols, top talkers, performance, recommendations)
+    2. Network Health (Active latency, DNS, gateway, packet loss diagnostics)
+    3. Web Traffic (Target website domain monitor)
+    4. Packet Inspector (Deep packet inspection, search, raw bytes)
+    5. Network Connections (L4 flow tracking, device overview, topology)
+    6. DNS Insights (Observable DNS transactions, domain analysis)
+    7. Security Alerts (Intelligent deduplicated incidents, evidence modal)
+    8. Investigations (Formal case studio, timeline, reports)
+    9. Offline Analysis (Streaming PCAP analysis, zero-admin playback)
+    10. Settings (Interface, profiles, refresh rates, performance)
+
+    Also features seamless toggling between Simple Mode and Advanced Mode.
     """
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Network Traffic Analyzer — Cybersecurity & Threat Intelligence Studio")
-        self.resize(1380, 920)
+        self.setWindowTitle("Network Traffic Analyzer — Cybersecurity & Health Studio")
+        self.resize(1400, 930)
         self.setMinimumSize(1200, 800)
+
+        self.db = IncidentDatabase()
 
         # State
         self.capture_engine = None
         self.current_bpf = ""
         self.stats_history = []
+        self.current_profile = self.db.get_setting("capture_profile", DEFAULT_PROFILE)
 
         # Interface detection
         best_iface = get_best_interface()
@@ -63,17 +76,16 @@ class MainWindow(QMainWindow):
         self.check_environment()
 
     def check_environment(self):
-        """Checks for Npcap and Administrator privileges and informs the user."""
+        """Checks for Npcap and informs user if not detected."""
         if sys.platform == 'win32':
             has_pcap = getattr(conf, 'use_pcap', False)
             if not has_pcap:
                 QMessageBox.warning(
                     self,
-                    "Npcap Required",
+                    "Npcap Required for Live Capture",
                     "Npcap / WinPcap was not detected on your Windows system.\n\n"
-                    "Packet capture will fail without Npcap.\n"
-                    "Please download and install Npcap from https://npcap.com/\n"
-                    "Make sure to check 'Install Npcap in WinPcap API-compatible Mode'."
+                    "Live packet capture requires Npcap (https://npcap.com/).\n"
+                    "Note: Offline PCAP Analysis and Network Health tests remain fully functional without Npcap."
                 )
 
     def init_ui(self):
@@ -85,7 +97,13 @@ class MainWindow(QMainWindow):
         main_layout.setSpacing(6)
 
         # -------------------------------------------------------------
-        # Main Navigation Tabs (8 Dedicated Cybersecurity Sections)
+        # Central View Stack: Index 0 = Advanced Mode, Index 1 = Simple Mode
+        # -------------------------------------------------------------
+        self.view_stack = QStackedWidget()
+        main_layout.addWidget(self.view_stack)
+
+        # -------------------------------------------------------------
+        # 10 Dedicated Navigation Sections (Advanced Mode)
         # -------------------------------------------------------------
         self.tabs = QTabWidget()
         self.tabs.setStyleSheet("""
@@ -97,14 +115,14 @@ class MainWindow(QMainWindow):
             QTabBar::tab {
                 background: #25252c;
                 color: #a0a0b0;
-                padding: 8px 16px;
+                padding: 8px 14px;
                 font-weight: bold;
-                font-size: 12px;
+                font-size: 11px;
                 border: 1px solid #363642;
                 border-bottom: none;
                 border-top-left-radius: 6px;
                 border-top-right-radius: 6px;
-                margin-right: 3px;
+                margin-right: 2px;
             }
             QTabBar::tab:selected {
                 background: #2b2b36;
@@ -121,36 +139,49 @@ class MainWindow(QMainWindow):
         self.dashboard = DashboardWidget()
         self.tabs.addTab(self.dashboard, "📊 Dashboard")
 
-        # 2. Packet Inspector
-        self.packet_table = PacketTableWidget()
-        self.tabs.addTab(self.packet_table, "📦 Packet Inspector")
+        # 2. Network Health
+        self.network_health = NetworkHealthWidget()
+        self.tabs.addTab(self.network_health, "🩺 Network Health")
 
-        # 3. Network Connections
-        self.connection_explorer = ConnectionExplorerWidget()
-        self.tabs.addTab(self.connection_explorer, "🔗 Network Connections")
-
-        # 4. Web Traffic
+        # 3. Web Traffic
         self.web_traffic_widget = WebTrafficWidget()
         self.tabs.addTab(self.web_traffic_widget, "🌐 Web Traffic")
 
-        # 5. DNS Insights
+        # 4. Packet Inspector
+        self.packet_table = PacketTableWidget()
+        self.tabs.addTab(self.packet_table, "📦 Packet Inspector")
+
+        # 5. Network Connections
+        self.connection_explorer = ConnectionExplorerWidget()
+        self.tabs.addTab(self.connection_explorer, "🔗 Network Connections")
+
+        # 6. DNS Insights
         self.dns_insights = DNSInsightsWidget()
         self.tabs.addTab(self.dns_insights, "🔍 DNS Insights")
 
-        # 6. Security Alerts
+        # 7. Security Alerts
         self.alerts_panel = AlertsPanel()
         self.tabs.addTab(self.alerts_panel, "🚨 Security Alerts")
 
-        # 7. Investigations
+        # 8. Investigations
         self.investigation_widget = InvestigationWidget()
         self.tabs.addTab(self.investigation_widget, "🛡 Investigations")
 
-        # 8. Settings
+        # 9. Offline PCAP Analysis
+        self.offline_analysis = OfflineAnalysisWidget()
+        self.tabs.addTab(self.offline_analysis, "📁 Offline Analysis")
+
+        # 10. Settings
         self.settings_widget = SettingsWidget(current_iface=self.current_interface, current_bpf=self.current_bpf)
         self.settings_widget.settings_applied.connect(self._on_settings_applied)
         self.tabs.addTab(self.settings_widget, "⚙ Settings")
 
-        main_layout.addWidget(self.tabs)
+        self.view_stack.addWidget(self.tabs) # Stack Index 0
+
+        # Simple Mode Widget
+        self.simple_mode = SimpleModeWidget()
+        self.simple_mode.switch_to_advanced_requested.connect(self._toggle_to_advanced_mode)
+        self.view_stack.addWidget(self.simple_mode) # Stack Index 1
 
         # -----------------------------------------------------------
         # Main Toolbar
@@ -159,16 +190,45 @@ class MainWindow(QMainWindow):
         toolbar.setMovable(False)
         self.addToolBar(toolbar)
 
-        self.start_action = QAction("▶ Start Global Capture", self)
-        self.start_action.setToolTip("Start capturing all packets on the selected interface")
+        self.start_action = QAction("▶ Start Capture", self)
+        self.start_action.setToolTip("Start capturing live packets on the selected interface")
         self.start_action.triggered.connect(self.start_capture)
         toolbar.addAction(self.start_action)
 
-        self.stop_action = QAction("⏹ Stop Global Capture", self)
+        self.stop_action = QAction("⏹ Stop Capture", self)
         self.stop_action.setToolTip("Stop active global packet capture")
         self.stop_action.triggered.connect(self.stop_capture)
         self.stop_action.setEnabled(False)
         toolbar.addAction(self.stop_action)
+
+        toolbar.addSeparator()
+
+        # Simple / Advanced Mode Selector (Feature 3C)
+        toolbar.addWidget(QLabel(" View: "))
+        self.cmb_mode = QComboBox()
+        self.cmb_mode.addItem("Advanced Mode", "advanced")
+        self.cmb_mode.addItem("Simple Mode", "simple")
+        self.cmb_mode.setStyleSheet("background: #25252c; color: #00e5ff; font-weight: bold; padding: 4px; border: 1px solid #363642;")
+        saved_mode = self.db.get_setting("ui_mode", "advanced")
+        if saved_mode == "simple":
+            self.cmb_mode.setCurrentIndex(1)
+            self.view_stack.setCurrentIndex(1)
+        else:
+            self.cmb_mode.setCurrentIndex(0)
+            self.view_stack.setCurrentIndex(0)
+        self.cmb_mode.currentIndexChanged.connect(self._on_mode_changed)
+        toolbar.addWidget(self.cmb_mode)
+
+        toolbar.addSeparator()
+
+        # Capture Profile Quick Selector (Feature 1F)
+        toolbar.addWidget(QLabel(" Profile: "))
+        self.cmb_profile = QComboBox()
+        self.cmb_profile.addItems(["Balanced", "Lightweight", "Deep Analysis"])
+        self.cmb_profile.setCurrentText(self.current_profile)
+        self.cmb_profile.setStyleSheet("background: #25252c; color: #ffd600; padding: 4px; border: 1px solid #363642;")
+        self.cmb_profile.currentTextChanged.connect(self._on_profile_toolbar_changed)
+        toolbar.addWidget(self.cmb_profile)
 
         toolbar.addSeparator()
 
@@ -216,71 +276,105 @@ class MainWindow(QMainWindow):
         self._wire_component_signals()
 
     def _wire_component_signals(self):
-        # 1. Top Talkers IP click -> Inspect IP or filter flows
+        # 1. Top Talkers IP click -> Inspect IP in Network Connections (Tab 4)
         self.dashboard.ip_clicked.connect(self._on_top_talker_clicked)
 
-        # 2. Connection Explorer -> Inspect Flow Packets
+        # 2. Connection Explorer -> Inspect Flow Packets in Packet Inspector (Tab 3)
         self.connection_explorer.inspect_flow_packets_requested.connect(self._on_inspect_flow_packets)
 
-        # 3. Security Alerts -> Launch Investigation
+        # 3. Security Alerts -> Launch Investigation (Tab 7)
         self.alerts_panel.launch_investigation_requested.connect(self._on_launch_investigation_from_alert)
 
-        # 4. Security Alerts -> Filter Connections
+        # 4. Security Alerts -> Filter Connections (Tab 4)
         self.alerts_panel.filter_connections_requested.connect(self._on_filter_connections_from_alert)
 
-        # 5. Investigation Widget -> Filter Connections
+        # 5. Security Alerts -> Inspect Packets (Tab 3)
+        self.alerts_panel.inspect_packets_requested.connect(self._on_inspect_packets_from_alert)
+
+        # 6. Investigation Widget -> Filter Connections (Tab 4)
         self.investigation_widget.filter_connections_requested.connect(self._on_filter_connections_from_alert)
 
+    def _on_mode_changed(self, index: int):
+        mode_val = self.cmb_mode.itemData(index) or ("simple" if index == 1 else "advanced")
+        self.view_stack.setCurrentIndex(1 if mode_val == "simple" else 0)
+        self.db.set_setting("ui_mode", mode_val)
+        mode_label = "Simple Mode (Beginner friendly)" if mode_val == "simple" else "Advanced Cybersecurity Studio"
+        self.status_bar.showMessage(f"Switched to {mode_label}. Capture remains active.")
+
+    def _toggle_to_advanced_mode(self):
+        self.cmb_mode.setCurrentIndex(0)
+        self._on_mode_changed(0)
+
+    def _on_profile_toolbar_changed(self, profile_name: str):
+        self.current_profile = profile_name
+        self.db.set_setting("capture_profile", profile_name)
+        if self.capture_engine and self.capture_engine.isRunning():
+            self.capture_engine.set_profile(profile_name)
+        self.status_bar.showMessage(f"Capture profile set to: {profile_name}")
+
     def _on_top_talker_clicked(self, ip: str):
-        # Switch to Network Connections tab and filter by this IP
-        self.tabs.setCurrentIndex(2) # Network Connections tab
+        self.view_stack.setCurrentIndex(0)
+        self.tabs.setCurrentIndex(4) # Network Connections tab
         self.connection_explorer.filter_by_ip(ip)
 
     def _on_inspect_flow_packets(self, src_ip: str, dst_ip: str, sport: int, dport: int, proto: str):
-        # Switch to Packet Inspector tab and search for IP
-        self.tabs.setCurrentIndex(1) # Packet Inspector
+        self.view_stack.setCurrentIndex(0)
+        self.tabs.setCurrentIndex(3) # Packet Inspector tab
         self.packet_table.search_input.setText(src_ip)
 
+    def _on_inspect_packets_from_alert(self, ip: str):
+        self.view_stack.setCurrentIndex(0)
+        self.tabs.setCurrentIndex(3) # Packet Inspector tab
+        self.packet_table.search_input.setText(ip)
+
     def _on_launch_investigation_from_alert(self, alert_data: dict):
-        # Switch to Investigations tab and open the case
-        self.tabs.setCurrentIndex(6) # Investigations tab
+        self.view_stack.setCurrentIndex(0)
+        self.tabs.setCurrentIndex(7) # Investigations tab
         self.investigation_widget.open_investigation_from_alert(alert_data)
 
     def _on_filter_connections_from_alert(self, src_ip: str, dst_ip: str):
-        # Switch to Connections tab and search
-        self.tabs.setCurrentIndex(2)
+        self.view_stack.setCurrentIndex(0)
+        self.tabs.setCurrentIndex(4) # Network Connections tab
         target = src_ip if src_ip and src_ip not in ("Unknown", "Multiple") else dst_ip
         if target:
             self.connection_explorer.filter_by_ip(target)
 
     def _on_tab_changed(self, index: int):
         tab_names = [
-            "Dashboard", "Packet Inspector", "Network Connections",
-            "Web Traffic", "DNS Insights", "Security Alerts", "Investigations", "Settings"
+            "Dashboard", "Network Health", "Web Traffic", "Packet Inspector",
+            "Network Connections", "DNS Insights", "Security Alerts",
+            "Investigations", "Offline Analysis", "Settings"
         ]
         name = tab_names[index] if index < len(tab_names) else "View"
         self.status_bar.showMessage(f"{name} active. Interface: {self.current_interface}")
 
     def open_settings(self):
-        # Switch directly to Settings tab
-        self.tabs.setCurrentIndex(7)
+        self.view_stack.setCurrentIndex(0)
+        self.tabs.setCurrentIndex(9) # Settings tab
 
-    def _on_settings_applied(self, iface: str, bpf: str):
+    def _on_settings_applied(self, iface: str, bpf: str, profile: str = "Balanced"):
         self.current_interface = iface
         self.current_bpf = bpf
+        self.current_profile = profile
+        self.cmb_profile.setCurrentText(profile)
         self.toolbar_iface_label.setText(f"  Interface: <b>{self.current_interface}</b>  ")
         filter_str = f" | Filter: '{self.current_bpf}'" if self.current_bpf else ""
-        self.status_bar.showMessage(f"Configuration applied. Interface: {self.current_interface}{filter_str}")
+        self.status_bar.showMessage(f"Configuration applied ({profile}). Interface: {self.current_interface}{filter_str}")
 
     def start_capture(self):
         if self.capture_engine and self.capture_engine.isRunning():
             return
 
-        self.capture_engine = CaptureEngine(self.current_interface, self.current_bpf)
+        self.capture_engine = CaptureEngine(
+            interface=self.current_interface,
+            bpf_filter=self.current_bpf,
+            profile_name=self.current_profile
+        )
 
-        # Connect signals
-        self.capture_engine.packet_captured.connect(self.packet_table.add_packet, Qt.QueuedConnection)
+        # Connect signals (using both batched and individual handlers)
+        self.capture_engine.packets_batch_captured.connect(self.packet_table.add_packet_batch, Qt.QueuedConnection)
         self.capture_engine.stats_updated.connect(self.handle_stats, Qt.QueuedConnection)
+        self.capture_engine.stats_updated.connect(self.simple_mode.update_stats, Qt.QueuedConnection)
         self.capture_engine.alerts_generated.connect(self.handle_alerts, Qt.QueuedConnection)
         self.capture_engine.capture_error.connect(self.handle_error, Qt.QueuedConnection)
         self.capture_engine.capture_stopped.connect(self.on_capture_stopped, Qt.QueuedConnection)
@@ -289,18 +383,18 @@ class MainWindow(QMainWindow):
 
         self.start_action.setEnabled(False)
         self.stop_action.setEnabled(True)
-        self.status_bar.showMessage(f"Capturing live traffic on {self.current_interface}...")
-        logger.info("Global capture started.")
+        self.status_bar.showMessage(f"Capturing live traffic on {self.current_interface} (Profile: {self.current_profile})...")
+        logger.info(f"Capture started ({self.current_profile}).")
 
     def stop_capture(self):
         if self.capture_engine and self.capture_engine.isRunning():
-            self.status_bar.showMessage("Stopping global capture...")
+            self.status_bar.showMessage("Stopping capture...")
             self.capture_engine.stop()
 
     def on_capture_stopped(self):
         self.start_action.setEnabled(True)
         self.stop_action.setEnabled(False)
-        self.status_bar.showMessage("Global capture stopped.")
+        self.status_bar.showMessage("Capture stopped.")
 
     def handle_stats(self, stats: dict):
         self.stats_history.append(stats)
@@ -369,4 +463,6 @@ class MainWindow(QMainWindow):
         self.stop_capture()
         if hasattr(self, 'web_traffic_widget') and self.web_traffic_widget.web_engine:
             self.web_traffic_widget.stop_capture()
+        if hasattr(self, 'offline_analysis') and self.offline_analysis.worker:
+            self.offline_analysis.cancel_analysis()
         super().closeEvent(event)

@@ -19,6 +19,7 @@ class AlertDetailsDialog(QDialog):
     """
     launch_investigation_requested = Signal(dict) # Passes alert dict to open in Investigations tab
     filter_connections_requested = Signal(str, str) # src_ip, dst_ip
+    inspect_packets_requested = Signal(str) # IP address to search in packet inspector
 
     def __init__(self, alert_data: dict, parent=None):
         super().__init__(parent)
@@ -27,8 +28,8 @@ class AlertDetailsDialog(QDialog):
         self.db = IncidentDatabase()
 
         self.setWindowTitle(f"Security Alert Details — {alert_data.get('alert_id', 'Unknown')}")
-        self.resize(780, 640)
-        self.setMinimumSize(700, 560)
+        self.resize(820, 680)
+        self.setMinimumSize(740, 580)
 
         self._init_ui()
         self._load_occurrences()
@@ -192,25 +193,35 @@ class AlertDetailsDialog(QDialog):
         # 6. Bottom Action Controls
         bottom_layout = QHBoxLayout()
         
-        btn_threat = QPushButton("🛡 Check Threat Intel (Source IP)")
+        btn_threat = QPushButton("🛡 Check Threat Intel")
         btn_threat.setStyleSheet("background: #363642; color: #fff; padding: 6px 12px; border-radius: 4px;")
         btn_threat.clicked.connect(self._open_threat_intel)
         bottom_layout.addWidget(btn_threat)
 
-        btn_conns = QPushButton("🔗 Filter Connections")
+        btn_conns = QPushButton("🔗 View Related Flows")
         btn_conns.setStyleSheet("background: #363642; color: #fff; padding: 6px 12px; border-radius: 4px;")
         btn_conns.clicked.connect(self._filter_connections)
         bottom_layout.addWidget(btn_conns)
 
+        btn_pkts = QPushButton("📦 View Related Packets")
+        btn_pkts.setStyleSheet("background: #363642; color: #fff; padding: 6px 12px; border-radius: 4px;")
+        btn_pkts.clicked.connect(self._inspect_related_packets)
+        bottom_layout.addWidget(btn_pkts)
+
+        btn_export = QPushButton("📥 Export Evidence JSON")
+        btn_export.setStyleSheet("background: #363642; color: #00e5ff; padding: 6px 12px; border-radius: 4px;")
+        btn_export.clicked.connect(self._export_evidence_json)
+        bottom_layout.addWidget(btn_export)
+
         bottom_layout.addStretch()
 
-        btn_investigate = QPushButton("🚀 Launch Formal Investigation")
-        btn_investigate.setStyleSheet("background-color: #b71c1c; color: white; font-weight: bold; padding: 6px 16px; border-radius: 4px;")
+        btn_investigate = QPushButton("🚀 Formal Investigation")
+        btn_investigate.setStyleSheet("background-color: #b71c1c; color: white; font-weight: bold; padding: 6px 14px; border-radius: 4px;")
         btn_investigate.clicked.connect(self._launch_investigation)
         bottom_layout.addWidget(btn_investigate)
 
         btn_close = QPushButton("Close")
-        btn_close.setStyleSheet("background-color: #2e7d32; color: white; padding: 6px 16px; border-radius: 4px;")
+        btn_close.setStyleSheet("background-color: #2e7d32; color: white; padding: 6px 14px; border-radius: 4px;")
         btn_close.clicked.connect(self.accept)
         bottom_layout.addWidget(btn_close)
 
@@ -220,7 +231,6 @@ class AlertDetailsDialog(QDialog):
         alert_id = self.alert_data.get("alert_id")
         occurrences = self.db.get_alert_occurrences(alert_id)
         if not occurrences:
-            # Fallback to current alert as first occurrence
             self.tbl_occ.setRowCount(1)
             dt = datetime.datetime.fromtimestamp(self.alert_data.get("first_seen", 0)).strftime("%H:%M:%S")
             self.tbl_occ.setItem(0, 0, QTableWidgetItem(dt))
@@ -241,7 +251,12 @@ class AlertDetailsDialog(QDialog):
         new_status = self.cmb_status.currentText()
         notes = self.txt_notes.text().strip()
         alert_id = self.alert_data.get("alert_id")
-        success = self.manager.update_alert_status(alert_id, new_status, notes)
+
+        if new_status == "False Positive":
+            success = self.manager.mark_false_positive(alert_id, notes)
+        else:
+            success = self.manager.update_alert_status(alert_id, new_status, notes)
+
         if success:
             self.alert_data["status"] = new_status
             QMessageBox.information(self, "Status Updated", f"Alert {alert_id} status updated to '{new_status}'.")
@@ -250,7 +265,7 @@ class AlertDetailsDialog(QDialog):
 
     def _open_threat_intel(self):
         src_ip = self.alert_data.get("src_ip", "Unknown")
-        if src_ip and src_ip != "Unknown" and src_ip != "Multiple":
+        if src_ip and src_ip not in ("Unknown", "Multiple"):
             dlg = IPThreatIntelDialog(src_ip, parent=self)
             dlg.exec()
         else:
@@ -261,6 +276,30 @@ class AlertDetailsDialog(QDialog):
         dst = self.alert_data.get("dst_ip", "")
         self.filter_connections_requested.emit(src, dst)
         self.accept()
+
+    def _inspect_related_packets(self):
+        src = self.alert_data.get("src_ip", "")
+        dst = self.alert_data.get("dst_ip", "")
+        target = src if src and src not in ("Unknown", "Multiple") else dst
+        if target:
+            self.inspect_packets_requested.emit(target)
+            self.accept()
+        else:
+            QMessageBox.information(self, "No Target IP", "No specific IP address available to filter packets.")
+
+    def _export_evidence_json(self):
+        from PySide6.QtWidgets import QFileDialog
+        import json
+        alert_id = self.alert_data.get("alert_id", "alert")
+        evidence = self.manager.get_alert_evidence(alert_id)
+        path, _ = QFileDialog.getSaveFileName(self, "Save Alert Evidence", f"{alert_id}_evidence.json", "JSON Files (*.json)")
+        if path:
+            try:
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(evidence, f, indent=2)
+                QMessageBox.information(self, "Saved", f"Saved evidence to:\n{path}")
+            except Exception as e:
+                QMessageBox.warning(self, "Error", f"Failed to save JSON: {e}")
 
     def _launch_investigation(self):
         self.launch_investigation_requested.emit(self.alert_data)

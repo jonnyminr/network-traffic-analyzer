@@ -274,6 +274,79 @@ class ConnectionTracker:
                     matches.append(flow.to_dict())
             return sorted(matches, key=lambda f: f["last_seen"], reverse=True)
 
+    def expire_inactive_flows(self, timeout_seconds: float = 300.0) -> int:
+        """Prunes flows that have been inactive longer than timeout_seconds."""
+        now = time.time()
+        expired_keys = []
+        with self.lock:
+            for k, flow in self.flows.items():
+                if (now - flow.last_seen) > timeout_seconds:
+                    expired_keys.append(k)
+            for k in expired_keys:
+                self.flows.pop(k, None)
+        return len(expired_keys)
+
+    def get_endpoints_overview(self) -> List[Dict[str, Any]]:
+        """
+        Aggregates flow information by observed IP endpoint for Device & Host Overview.
+        Provides: IP address, Internal/External classification, First/Last seen,
+        Bytes transferred (Tx/Rx), Packet count, Observed connections, Associated alerts.
+        """
+        endpoints = {}
+        with self.lock:
+            for flow in self.flows.values():
+                src = flow.initiator_ip
+                if src not in endpoints:
+                    endpoints[src] = {
+                        "ip": src,
+                        "classification": flow.src_classification.get("scope", "External"),
+                        "is_public": flow.src_classification.get("is_public", True),
+                        "first_seen": flow.first_seen,
+                        "last_seen": flow.last_seen,
+                        "bytes_sent": 0,
+                        "bytes_recv": 0,
+                        "total_bytes": 0,
+                        "packets": 0,
+                        "connection_count": 0,
+                        "associated_alerts": 0
+                    }
+                e = endpoints[src]
+                e["first_seen"] = min(e["first_seen"], flow.first_seen)
+                e["last_seen"] = max(e["last_seen"], flow.last_seen)
+                e["bytes_sent"] += flow.bytes_sent
+                e["bytes_recv"] += flow.bytes_recv
+                e["total_bytes"] += flow.total_bytes
+                e["packets"] += flow.total_packets
+                e["connection_count"] += 1
+                e["associated_alerts"] += len(flow.related_alerts)
+
+                dst = flow.responder_ip
+                if dst not in endpoints:
+                    endpoints[dst] = {
+                        "ip": dst,
+                        "classification": flow.dst_classification.get("scope", "External"),
+                        "is_public": flow.dst_classification.get("is_public", True),
+                        "first_seen": flow.first_seen,
+                        "last_seen": flow.last_seen,
+                        "bytes_sent": 0,
+                        "bytes_recv": 0,
+                        "total_bytes": 0,
+                        "packets": 0,
+                        "connection_count": 0,
+                        "associated_alerts": 0
+                    }
+                e2 = endpoints[dst]
+                e2["first_seen"] = min(e2["first_seen"], flow.first_seen)
+                e2["last_seen"] = max(e2["last_seen"], flow.last_seen)
+                e2["bytes_sent"] += flow.bytes_recv
+                e2["bytes_recv"] += flow.bytes_sent
+                e2["total_bytes"] += flow.total_bytes
+                e2["packets"] += flow.total_packets
+                e2["connection_count"] += 1
+                e2["associated_alerts"] += len(flow.related_alerts)
+
+        return sorted(endpoints.values(), key=lambda x: x["total_bytes"], reverse=True)
+
     def clear(self):
         with self.lock:
             self.flows.clear()

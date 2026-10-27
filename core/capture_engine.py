@@ -1,4 +1,5 @@
 import time
+import queue
 import collections
 from typing import Dict, Any, List, Optional
 from PySide6.QtCore import QThread, Signal
@@ -10,62 +11,154 @@ from core.anomaly_detector import AnomalyDetector
 from core.connection_tracker import ConnectionTracker
 from core.dns_monitor import DNSMonitor
 from core.alert_manager import AlertManager
+from core.capture_profiles import get_profile, CaptureProfile
+from core.performance_monitor import PerformanceMonitor
 from utils.interfaces import resolve_scapy_interface
 from utils.logger import logger
 
+
 class CaptureEngine(QThread):
-    # Signals to communicate with the GUI
+    """
+    High-Performance Asynchronous Packet Capture Engine.
+    Decouples raw packet capture (AsyncSniffer) from parsing, aggregations,
+    anomaly detection, and GUI signal emissions using a bounded thread-safe queue.
+    """
+    # Signals to communicate with GUI
     packet_captured = Signal(dict)
+    packets_batch_captured = Signal(list)
     stats_updated = Signal(dict)
     alerts_generated = Signal(list)
     capture_error = Signal(str)
     capture_stopped = Signal()
 
-    def __init__(self, interface: Any = None, bpf_filter: str = ""):
+    def __init__(self, interface: Any = None, bpf_filter: str = "", profile_name: str = "Balanced"):
         super().__init__()
         self.interface = interface
         self.bpf_filter = bpf_filter.strip() if bpf_filter else ""
+        self.profile: CaptureProfile = get_profile(profile_name)
         
         self.is_running = False
         self.stats_aggregator = StatsAggregator()
         self.anomaly_detector = AnomalyDetector()
+        self.perf_monitor = PerformanceMonitor()
         
-        # Keep a rolling buffer of raw packets for PCAP export (up to 2,000 recent packets)
-        self.raw_packet_buffer = collections.deque(maxlen=2000)
+        # Bounded packet queue separating capture thread from processing thread
+        self.packet_queue = queue.Queue(maxsize=20000)
+        
+        # Bounded buffer of raw packets for PCAP export (configured per profile)
+        self.raw_packet_buffer = collections.deque(maxlen=self.profile.raw_buffer_size)
         
         self.last_stats_emit = time.time()
-        self.stats_interval = 1.0 # Emit stats every second
+        self.last_batch_emit = time.time()
+        self.stats_interval = self.profile.stats_interval
+
+    def set_profile(self, profile_name: str):
+        self.profile = get_profile(profile_name)
+        self.stats_interval = self.profile.stats_interval
+        # Resize raw packet buffer if needed
+        current_pkts = list(self.raw_packet_buffer)
+        self.raw_packet_buffer = collections.deque(
+            current_pkts[-self.profile.raw_buffer_size:], 
+            maxlen=self.profile.raw_buffer_size
+        )
+        logger.info(f"Capture profile set to '{self.profile.name}' (buffer={self.profile.raw_buffer_size})")
 
     def run(self):
         self.is_running = True
         self.stats_aggregator.reset_all()
+        self.perf_monitor.reset()
         
-        # Resolve the interface using robust platform resolution
+        # Resolve the interface
         resolved_iface = resolve_scapy_interface(self.interface)
         iface_name = getattr(resolved_iface, 'name', str(resolved_iface))
-        logger.info(f"Starting capture on interface: {iface_name} (Filter: '{self.bpf_filter}')")
+        logger.info(
+            f"Starting capture on interface: {iface_name} "
+            f"(Profile: {self.profile.name}, Filter: '{self.bpf_filter}')"
+        )
         
         sniffer = None
         try:
             sniffer = AsyncSniffer(
                 iface=resolved_iface,
                 filter=self.bpf_filter if self.bpf_filter else None,
-                prn=self.process_packet,
-                store=False, # Don't accumulate all packets unbounded in memory
-                promisc=False # Promiscuous mode often fails on Windows Wi-Fi
+                prn=self._enqueue_packet,
+                store=False, # Don't accumulate packets unbounded in Scapy
+                promisc=False
             )
             sniffer.start()
             
+            # Processing loop runs on this QThread
+            pending_batch = []
+            self.last_batch_emit = time.time()
+            self.last_stats_emit = time.time()
+
             while self.is_running:
-                # Sleep in short slices for instantaneous stop responsiveness
-                sleep_steps = max(1, int(self.stats_interval / 0.1))
-                for _ in range(sleep_steps):
-                    if not self.is_running:
-                        break
-                    time.sleep(0.1)
+                now = time.time()
                 
-                if self.is_running:
+                # Update queue backlog size
+                q_size = self.packet_queue.qsize()
+                self.perf_monitor.update_queue_status(q_size)
+
+                # Drain packets from the bounded queue
+                drained_count = 0
+                max_drain_per_iter = 100 # Batch size
+                
+                while drained_count < max_drain_per_iter:
+                    try:
+                        arrival_time, raw_packet = self.packet_queue.get_nowait()
+                    except queue.Empty:
+                        break
+                    
+                    drained_count += 1
+                    proc_latency_ms = (time.time() - arrival_time) * 1000.0
+                    self.perf_monitor.record_packet_processed(proc_latency_ms)
+
+                    # Store in rolling buffer for PCAP export
+                    self.raw_packet_buffer.append(raw_packet)
+
+                    # Parse packet
+                    parsed = parse_packet(raw_packet)
+                    if parsed:
+                        pending_batch.append(parsed)
+                        self.stats_aggregator.add_packet(parsed)
+
+                        # Deep analysis tracking (skipped in Lightweight profile)
+                        if self.profile.deep_inspection:
+                            try:
+                                ConnectionTracker().process_packet(parsed, raw_packet)
+                            except Exception:
+                                pass
+                            try:
+                                DNSMonitor().process_packet(parsed, raw_packet)
+                            except Exception:
+                                pass
+
+                # Emit batched packets to GUI at controlled interval (e.g. 100ms)
+                batch_elapsed = (now - self.last_batch_emit) * 1000.0
+                if pending_batch and (batch_elapsed >= self.profile.packet_table_batch_ms or len(pending_batch) >= 100):
+                    # Emit batch signal (for optimized listeners)
+                    self.packets_batch_captured.emit(list(pending_batch))
+                    # Also emit single signal for legacy compatibility
+                    for p in pending_batch:
+                        self.packet_captured.emit(p)
+                    pending_batch.clear()
+                    self.last_batch_emit = now
+
+                # Periodic stats aggregation and anomaly detection
+                if (now - self.last_stats_emit) >= self.stats_interval:
                     self._emit_stats()
+                    self.last_stats_emit = now
+
+                # Small sleep when queue is empty to avoid 100% CPU busy loop
+                if drained_count == 0:
+                    time.sleep(0.02)
+
+            # Flush remaining batch before stopping
+            if pending_batch:
+                self.packets_batch_captured.emit(list(pending_batch))
+                for p in pending_batch:
+                    self.packet_captured.emit(p)
+                pending_batch.clear()
 
         except PermissionError:
             msg = (
@@ -103,39 +196,32 @@ class CaptureEngine(QThread):
                     pass
             self.is_running = False
             self.capture_stopped.emit()
-            logger.info("Capture stopped.")
+            logger.info("Capture stopped cleanly.")
 
-    def process_packet(self, raw_packet):
+    def _enqueue_packet(self, raw_packet):
+        """Called by Scapy's capture thread. Must execute as fast as possible."""
         if not self.is_running:
             return
+        try:
+            self.packet_queue.put_nowait((time.time(), raw_packet))
+        except queue.Full:
+            self.perf_monitor.record_queue_drop()
 
-        # Store raw packet for PCAP export
-        self.raw_packet_buffer.append(raw_packet)
-
-        # Parse the packet
-        parsed = parse_packet(raw_packet)
-        if parsed:
-            # Emit raw parsed packet for UI table
-            self.packet_captured.emit(parsed)
-            # Update stats
-            self.stats_aggregator.add_packet(parsed)
-            # Update connection flow tracker
-            try:
-                ConnectionTracker().process_packet(parsed, raw_packet)
-            except Exception:
-                pass
-            # Update DNS monitor
-            try:
-                DNSMonitor().process_packet(parsed, raw_packet)
-            except Exception:
-                pass
+    def process_packet(self, raw_packet):
+        """Backward compatibility for direct testing."""
+        self._enqueue_packet(raw_packet)
 
     def _emit_stats(self):
         stats = self.stats_aggregator.get_and_reset_stats()
         self.stats_updated.emit(stats)
         
-        # Pass stats to anomaly detector
-        alerts = self.anomaly_detector.process_stats(stats)
+        # Pass stats to anomaly detector (ML enabled check)
+        if self.profile.ml_enabled:
+            alerts = self.anomaly_detector.process_stats(stats)
+        else:
+            # Rule-based only without ML overhead
+            alerts = self.anomaly_detector.process_stats_lightweight(stats) if hasattr(self.anomaly_detector, 'process_stats_lightweight') else self.anomaly_detector.process_stats(stats)
+            
         if alerts:
             mgr = AlertManager()
             for a in alerts:
@@ -152,4 +238,4 @@ class CaptureEngine(QThread):
     def stop(self):
         logger.info("Stop capture requested.")
         self.is_running = False
-        self.wait(2000) # Wait up to 2 seconds for thread to finish safely
+        self.wait(2000)

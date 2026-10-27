@@ -137,11 +137,42 @@ class IncidentDatabase:
                 );
             """)
 
+            # 7. False Positives Table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS false_positives (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    alert_id TEXT NOT NULL,
+                    category TEXT,
+                    src_ip TEXT,
+                    dst_ip TEXT,
+                    reason TEXT,
+                    created_at REAL NOT NULL
+                );
+            """)
+
+            # 8. Network Health History Table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS network_health_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp REAL NOT NULL,
+                    status TEXT NOT NULL,
+                    summary TEXT NOT NULL,
+                    latency_ms REAL,
+                    packet_loss_pct REAL,
+                    dns_status TEXT,
+                    dns_latency_ms REAL,
+                    gateway_status TEXT,
+                    interface_name TEXT,
+                    details_json TEXT
+                );
+            """)
+
             # Indexes for fast querying
             conn.execute("CREATE INDEX IF NOT EXISTS idx_alerts_status ON alerts(status);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_alerts_last_seen ON alerts(last_seen);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_occurrences_alert ON alert_occurrences(alert_id);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_timeline_inv ON investigation_timeline(investigation_id);")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_health_time ON network_health_history(timestamp);")
 
     # -------------------------------------------------------------
     # Alerts Operations
@@ -350,3 +381,77 @@ class IncidentDatabase:
                 """, (key, json.dumps(value)))
         except Exception as e:
             logger.error(f"Failed to persist setting {key}: {e}")
+
+    # -------------------------------------------------------------
+    # False Positive Operations
+    # -------------------------------------------------------------
+    def save_false_positive(self, alert_id: str, category: str = "", src_ip: str = "", dst_ip: str = "", reason: str = ""):
+        try:
+            conn = self._get_connection()
+            with conn:
+                conn.execute("""
+                    INSERT INTO false_positives (alert_id, category, src_ip, dst_ip, reason, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (alert_id, category, src_ip, dst_ip, reason, time.time()))
+            # Also update alert status
+            self.update_alert_status(alert_id, "False Positive", reason)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to record false positive for {alert_id}: {e}")
+            return False
+
+    def get_false_positives(self) -> List[Dict[str, Any]]:
+        try:
+            conn = self._get_connection()
+            cursor = conn.execute("SELECT * FROM false_positives ORDER BY created_at DESC")
+            return [dict(r) for r in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"Failed to fetch false positives: {e}")
+            return []
+
+    # -------------------------------------------------------------
+    # Network Health History Operations
+    # -------------------------------------------------------------
+    def save_health_check(self, result: Dict[str, Any]) -> bool:
+        try:
+            conn = self._get_connection()
+            with conn:
+                conn.execute("""
+                    INSERT INTO network_health_history (
+                        timestamp, status, summary, latency_ms, packet_loss_pct,
+                        dns_status, dns_latency_ms, gateway_status, interface_name, details_json
+                    ) VALUES (
+                        :timestamp, :status, :summary, :latency_ms, :packet_loss_pct,
+                        :dns_status, :dns_latency_ms, :gateway_status, :interface_name, :details_json
+                    )
+                """, {
+                    "timestamp": result.get("timestamp", time.time()),
+                    "status": result.get("status", "Unknown"),
+                    "summary": result.get("summary", ""),
+                    "latency_ms": result.get("latency_ms", 0.0),
+                    "packet_loss_pct": result.get("packet_loss_pct", 0.0),
+                    "dns_status": result.get("dns_status", "Unknown"),
+                    "dns_latency_ms": result.get("dns_latency_ms", 0.0),
+                    "gateway_status": result.get("gateway_status", "Unknown"),
+                    "interface_name": result.get("interface_name", ""),
+                    "details_json": json.dumps(result.get("details", {}))
+                })
+            return True
+        except Exception as e:
+            logger.error(f"Failed to save network health check result: {e}")
+            return False
+
+    def get_health_history(self, limit: int = 50) -> List[Dict[str, Any]]:
+        try:
+            conn = self._get_connection()
+            cursor = conn.execute("SELECT * FROM network_health_history ORDER BY timestamp DESC LIMIT ?", (limit,))
+            rows = cursor.fetchall()
+            results = []
+            for r in rows:
+                item = dict(r)
+                item["details"] = json.loads(item.get("details_json") or "{}")
+                results.append(item)
+            return results
+        except Exception as e:
+            logger.error(f"Failed to fetch network health history: {e}")
+            return []

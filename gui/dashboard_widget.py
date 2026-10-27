@@ -1,8 +1,16 @@
 import time
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-                               QTableWidget, QTableWidgetItem, QHeaderView, QFrame)
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
+    QTableWidget, QTableWidgetItem, QHeaderView, QFrame,
+    QScrollArea
+)
 from PySide6.QtCore import Qt, Signal
 import pyqtgraph as pg
+
+from core.recommendations_engine import RecommendationsEngine
+from core.performance_monitor import PerformanceMonitor
+from core.alert_manager import AlertManager
+from gui.tooltips_helper import get_tooltip
 
 # Configure pyqtgraph global options before creating widget instances
 pg.setConfigOption('background', '#1e1e24')
@@ -56,25 +64,81 @@ class DashboardWidget(QWidget):
         super().__init__(parent)
         self.max_points = 60 # 60 seconds rolling window
         
-        # Initialize rolling data buffers with zeros
+        # Rolling data buffers
         self.bytes_data = [0.0] * self.max_points
         self.packets_data = [0.0] * self.max_points
         self.proto_categories = ['TCP', 'UDP', 'ICMP', 'ARP', 'Other']
+        
+        self.perf_monitor = PerformanceMonitor()
+        self.alert_manager = AlertManager()
+        self.update_count = 0
         
         self.init_ui()
 
     def init_ui(self):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(4, 4, 4, 4)
-        main_layout.setSpacing(10)
+        main_layout.setSpacing(8)
+
+        # 0. Analyzer Performance Strip (Feature 1E)
+        perf_strip = QFrame()
+        perf_strip.setStyleSheet("""
+            QFrame {
+                background-color: #1e1e24;
+                border: 1px solid #2e2e3a;
+                border-radius: 6px;
+                padding: 4px 10px;
+            }
+        """)
+        h_perf = QHBoxLayout(perf_strip)
+        h_perf.setContentsMargins(4, 2, 4, 2)
+        h_perf.setSpacing(16)
+
+        lbl_p_title = QLabel("⚡ ANALYZER PERFORMANCE:")
+        lbl_p_title.setStyleSheet("color: #00e5ff; font-weight: bold; font-size: 11px;")
+        h_perf.addWidget(lbl_p_title)
+
+        self.lbl_perf_cpu = QLabel("CPU: 0.0%")
+        self.lbl_perf_cpu.setStyleSheet("color: #a0a0b0; font-size: 11px;")
+        h_perf.addWidget(self.lbl_perf_cpu)
+
+        self.lbl_perf_mem = QLabel("RAM: 0.0 MB")
+        self.lbl_perf_mem.setStyleSheet("color: #a0a0b0; font-size: 11px;")
+        h_perf.addWidget(self.lbl_perf_mem)
+
+        self.lbl_perf_q = QLabel("Queue: 0")
+        self.lbl_perf_q.setStyleSheet("color: #a0a0b0; font-size: 11px;")
+        h_perf.addWidget(self.lbl_perf_q)
+
+        self.lbl_perf_lat = QLabel("Latency: 0.0 ms")
+        self.lbl_perf_lat.setStyleSheet("color: #a0a0b0; font-size: 11px;")
+        h_perf.addWidget(self.lbl_perf_lat)
+
+        self.lbl_perf_fps = QLabel("GUI: 0.0 FPS")
+        self.lbl_perf_fps.setStyleSheet("color: #a0a0b0; font-size: 11px;")
+        h_perf.addWidget(self.lbl_perf_fps)
+
+        self.lbl_perf_drops = QLabel("Drops: 0")
+        self.lbl_perf_drops.setStyleSheet("color: #00e676; font-size: 11px; font-weight: bold;")
+        h_perf.addWidget(self.lbl_perf_drops)
+
+        h_perf.addStretch()
+        main_layout.addWidget(perf_strip)
         
-        # 1. KPI Cards Row
+        # 1. KPI Cards Row with Educational Tooltips (Feature 3D)
         kpi_layout = QHBoxLayout()
-        kpi_layout.setSpacing(10)
+        kpi_layout.setSpacing(8)
         self.card_throughput = MetricCard("Current Bandwidth", "0.0 B/s", "#00e5ff")
+        self.card_throughput.setToolTip(get_tooltip("Bandwidth"))
+        
         self.card_packet_rate = MetricCard("Packet Rate", "0 pkts/s", "#00e676")
+        self.card_packet_rate.setToolTip(get_tooltip("Packet rate"))
+        
         self.card_total_volume = MetricCard("Total Volume", "0.0 B", "#ffd600")
+        self.card_total_volume.setToolTip("Total cumulative network volume transferred during this capture session.")
+        
         self.card_total_packets = MetricCard("Total Packets", "0", "#ff9100")
+        self.card_total_packets.setToolTip("Total count of network packets captured and parsed.")
         
         kpi_layout.addWidget(self.card_throughput)
         kpi_layout.addWidget(self.card_packet_rate)
@@ -84,10 +148,11 @@ class DashboardWidget(QWidget):
         
         # 2. Charts Row (Throughput, Packet Rate, Protocol Distribution)
         charts_layout = QHBoxLayout()
-        charts_layout.setSpacing(10)
+        charts_layout.setSpacing(8)
         
         # Throughput Plot
         self.throughput_plot = pg.PlotWidget(title="Bandwidth Throughput")
+        self.throughput_plot.setToolTip(get_tooltip("Bandwidth"))
         self.throughput_plot.showGrid(x=True, y=True, alpha=0.25)
         self.throughput_plot.setLabel('left', 'Bytes / sec')
         self.throughput_plot.setLabel('bottom', 'Time (s)')
@@ -101,6 +166,7 @@ class DashboardWidget(QWidget):
         
         # Packet Rate Plot
         self.packet_plot = pg.PlotWidget(title="Packet Rate")
+        self.packet_plot.setToolTip(get_tooltip("Packet rate"))
         self.packet_plot.showGrid(x=True, y=True, alpha=0.25)
         self.packet_plot.setLabel('left', 'Packets / sec')
         self.packet_plot.setLabel('bottom', 'Time (s)')
@@ -114,6 +180,7 @@ class DashboardWidget(QWidget):
         
         # Protocol Distribution Bar Chart
         self.proto_plot = pg.PlotWidget(title="Protocol Breakdown")
+        self.proto_plot.setToolTip(get_tooltip("TCP"))
         self.proto_plot.showGrid(x=False, y=True, alpha=0.25)
         self.proto_plot.setLabel('left', 'Packets')
         proto_ax = self.proto_plot.getAxis('bottom')
@@ -136,12 +203,20 @@ class DashboardWidget(QWidget):
         
         main_layout.addLayout(charts_layout, stretch=3)
         
-        # 3. Bottom Row: Top Talkers Table
-        bottom_layout = QVBoxLayout()
-        bottom_layout.setSpacing(4)
-        label = QLabel("Top Talkers (Cumulative Bandwidth)")
-        label.setStyleSheet("font-weight: bold; font-size: 13px; color: #d4d4d4;")
-        bottom_layout.addWidget(label)
+        # 3. Bottom Row: Split between Top Talkers and Recommendations
+        bottom_layout = QHBoxLayout()
+        bottom_layout.setSpacing(8)
+
+        # Left: Top Talkers Table
+        talkers_frame = QFrame()
+        talkers_frame.setStyleSheet("background-color: #25252c; border: 1px solid #363642; border-radius: 6px; padding: 6px;")
+        v_talkers = QVBoxLayout(talkers_frame)
+        v_talkers.setContentsMargins(4, 4, 4, 4)
+        v_talkers.setSpacing(4)
+
+        lbl_tt = QLabel("Top Talkers (Cumulative Bandwidth)")
+        lbl_tt.setStyleSheet("font-weight: bold; font-size: 12px; color: #d4d4d4;")
+        v_talkers.addWidget(lbl_tt)
         
         self.talkers_table = QTableWidget(0, 4)
         self.talkers_table.setHorizontalHeaderLabels(["Rank", "IP Address", "Total Traffic", "% Share"])
@@ -151,9 +226,33 @@ class DashboardWidget(QWidget):
         self.talkers_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
         self.talkers_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.talkers_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.talkers_table.setMinimumHeight(140)
+        self.talkers_table.setStyleSheet("background-color: #1e1e24; color: #e0e0e0; border: none;")
         self.talkers_table.cellDoubleClicked.connect(self._on_talker_double_clicked)
-        bottom_layout.addWidget(self.talkers_table, stretch=1)
+        v_talkers.addWidget(self.talkers_table, 1)
+
+        bottom_layout.addWidget(talkers_frame, stretch=3)
+
+        # Right: Network Insights & Recommendations (Feature 6E)
+        recs_frame = QFrame()
+        recs_frame.setStyleSheet("background-color: #25252c; border: 1px solid #363642; border-radius: 6px; padding: 6px;")
+        v_recs = QVBoxLayout(recs_frame)
+        v_recs.setContentsMargins(6, 4, 6, 4)
+        v_recs.setSpacing(4)
+
+        lbl_rec_title = QLabel("💡 Network Insights & Practical Recommendations")
+        lbl_rec_title.setStyleSheet("font-weight: bold; font-size: 12px; color: #ffd600;")
+        v_recs.addWidget(lbl_rec_title)
+
+        self.lbl_recs_content = QLabel(
+            "• Establishing baseline traffic patterns...\n"
+            "• No severe anomalies or bandwidth bottlenecks detected.\n"
+            "• Tip: Double-click any Top Talker IP to inspect its active flows in Network Connections."
+        )
+        self.lbl_recs_content.setWordWrap(True)
+        self.lbl_recs_content.setStyleSheet("color: #d4d4d4; font-size: 11px; line-height: 1.4;")
+        v_recs.addWidget(self.lbl_recs_content, 1)
+
+        bottom_layout.addWidget(recs_frame, stretch=2)
         
         main_layout.addLayout(bottom_layout, stretch=2)
 
@@ -164,9 +263,12 @@ class DashboardWidget(QWidget):
 
     def update_stats(self, stats: dict):
         """
-        Receives stats dict emitted by CaptureEngine / StatsAggregator.
-        Updates charts, KPI cards, and the top talkers table.
+        Receives stats dict emitted by CaptureEngine.
+        Updates charts, KPI cards, top talkers, performance strip, and recommendations.
         """
+        self.update_count += 1
+        self.perf_monitor.record_gui_frame()
+
         bps = stats.get('bytes_per_sec', 0.0)
         pps = stats.get('packets_per_sec', 0.0)
         total_b = stats.get('total_bytes', 0)
@@ -205,6 +307,25 @@ class DashboardWidget(QWidget):
             pct = (bytes_count / total_talker_bytes) * 100
             self.talkers_table.setItem(idx, 3, QTableWidgetItem(f"{pct:.1f}%"))
 
+        # Update Analyzer Performance Strip (Feature 1E)
+        metrics = self.perf_monitor.get_metrics()
+        self.lbl_perf_cpu.setText(f"CPU: {metrics['cpu_percent']}%")
+        self.lbl_perf_mem.setText(f"RAM: {metrics['memory_mb']:.0f} MB")
+        self.lbl_perf_q.setText(f"Queue: {metrics['queue_backlog']}")
+        self.lbl_perf_lat.setText(f"Latency: {metrics['processing_latency_ms']:.1f}ms")
+        self.lbl_perf_fps.setText(f"GUI: {metrics['gui_fps']:.0f} FPS")
+        drops = metrics['queue_drops']
+        self.lbl_perf_drops.setText(f"Drops: {drops}")
+        self.lbl_perf_drops.setStyleSheet("color: #ff5252; font-weight: bold;" if drops > 0 else "color: #00e676; font-size: 11px;")
+
+        # Periodic refresh of recommendations (every 3 stats updates)
+        if self.update_count % 3 == 0:
+            alerts = self.alert_manager.get_all_alerts_snapshot()
+            recs = RecommendationsEngine.generate_recommendations(stats, alerts)
+            if recs:
+                rec_lines = [f"• <b>{r['title']}:</b> {r['recommendation']}" for r in recs[:3]]
+                self.lbl_recs_content.setText("<br><br>".join(rec_lines))
+
     def reset_dashboard(self):
         """Resets all metrics, charts, and tables to initial blank state."""
         self.bytes_data = [0.0] * self.max_points
@@ -218,3 +339,4 @@ class DashboardWidget(QWidget):
         self.card_packet_rate.set_value("0 pkts/s")
         self.card_total_volume.set_value("0.0 B")
         self.card_total_packets.set_value("0")
+        self.lbl_recs_content.setText("• Session data cleared. Start capture to observe traffic.")

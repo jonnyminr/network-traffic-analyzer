@@ -8,17 +8,21 @@ from PySide6.QtCore import Signal
 from utils.interfaces import get_network_interfaces
 from core.threat_intelligence import ThreatIntelManager
 from core.incident_db import IncidentDatabase
+from core.capture_profiles import PROFILES, DEFAULT_PROFILE
+from gui.performance_monitor_widget import PerformanceMonitorWidget
 
 
 class SettingsWidget(QWidget):
     """
-    Comprehensive Configuration Panel with 4 functional tabs:
+    Comprehensive Configuration Panel with 6 functional sections:
     1. Capture Interface & BPF Filters
-    2. Anomaly Detection & Statistical Baselines
-    3. Alert Grouping & Cooldowns
-    4. Threat Intelligence API Keys & Privacy Controls
+    2. Capture Profiles & Processing Workload
+    3. Anomaly Detection & Statistical Baselines
+    4. Alert Grouping & Cooldowns
+    5. Threat Intelligence API Keys & Privacy Controls
+    6. Analyzer Performance Monitor
     """
-    settings_applied = Signal(str, str) # Emits (selected_interface, bpf_filter)
+    settings_applied = Signal(str, str, str) # Emits (selected_interface, bpf_filter, profile_name)
 
     def __init__(self, parent=None, current_iface=None, current_bpf=""):
         super().__init__(parent)
@@ -26,6 +30,7 @@ class SettingsWidget(QWidget):
         self.bpf_filter = current_bpf
         self.db = IncidentDatabase()
         self.intel_manager = ThreatIntelManager()
+        self.selected_profile = self.db.get_setting("capture_profile", DEFAULT_PROFILE)
 
         self._init_ui()
 
@@ -44,7 +49,7 @@ class SettingsWidget(QWidget):
         main_layout.setContentsMargins(14, 14, 14, 14)
         main_layout.setSpacing(12)
 
-        header_lbl = QLabel("⚙ System Configuration & Security Thresholds")
+        header_lbl = QLabel("⚙ System Configuration & Performance Settings")
         header_lbl.setStyleSheet("color: #00e5ff; font-weight: bold; font-size: 16px;")
         main_layout.addWidget(header_lbl)
 
@@ -116,7 +121,59 @@ class SettingsWidget(QWidget):
         self.tabs.addTab(tab_iface, "🌐 Interface & BPF")
 
         # -------------------------------------------------------------
-        # TAB 2: Anomaly Detection Thresholds
+        # TAB 2: Capture Profiles & Refresh Rates (Feature 1B & 1F)
+        # -------------------------------------------------------------
+        tab_perf_prof = QWidget()
+        v_pp = QVBoxLayout(tab_perf_prof)
+        v_pp.setSpacing(12)
+
+        prof_group = QGroupBox("Active Capture Profile")
+        v_pg = QVBoxLayout(prof_group)
+
+        h_pr = QHBoxLayout()
+        h_pr.addWidget(QLabel("Capture Profile:"))
+        self.cmb_profile = QComboBox()
+        for p_name in PROFILES.keys():
+            self.cmb_profile.addItem(p_name)
+        self.cmb_profile.setCurrentText(self.selected_profile)
+        self.cmb_profile.currentTextChanged.connect(self._on_profile_selection_changed)
+        h_pr.addWidget(self.cmb_profile, 1)
+        v_pg.addLayout(h_pr)
+
+        self.lbl_profile_desc = QLabel(PROFILES[self.selected_profile].description)
+        self.lbl_profile_desc.setWordWrap(True)
+        self.lbl_profile_desc.setStyleSheet("color: #00e5ff; font-size: 11px; padding: 4px;")
+        v_pg.addWidget(self.lbl_profile_desc)
+
+        v_pp.addWidget(prof_group)
+
+        # Refresh Rates Group
+        rates_group = QGroupBox("GUI Update & Refresh Cadence")
+        v_rg = QVBoxLayout(rates_group)
+
+        h_fps = QHBoxLayout()
+        h_fps.addWidget(QLabel("Dashboard Chart Refresh Cadence (FPS):"))
+        self.spin_fps = QSpinBox()
+        self.spin_fps.setRange(2, 30)
+        self.spin_fps.setValue(int(self.db.get_setting("gui_fps_target", 10)))
+        h_fps.addWidget(self.spin_fps)
+        v_rg.addLayout(h_fps)
+
+        h_batch = QHBoxLayout()
+        h_batch.addWidget(QLabel("Packet Table Batch Flush Interval (ms):"))
+        self.spin_batch_ms = QSpinBox()
+        self.spin_batch_ms.setRange(25, 500)
+        self.spin_batch_ms.setSingleStep(25)
+        self.spin_batch_ms.setValue(int(self.db.get_setting("table_batch_ms", 100)))
+        h_batch.addWidget(self.spin_batch_ms)
+        v_rg.addLayout(h_batch)
+
+        v_pp.addWidget(rates_group)
+        v_pp.addStretch()
+        self.tabs.addTab(tab_perf_prof, "⚡ Profiles & Refresh")
+
+        # -------------------------------------------------------------
+        # TAB 3: Anomaly Detection Thresholds
         # -------------------------------------------------------------
         tab_anomaly = QWidget()
         v_anom = QVBoxLayout(tab_anomaly)
@@ -166,7 +223,7 @@ class SettingsWidget(QWidget):
         self.tabs.addTab(tab_anomaly, "📈 Anomaly Thresholds")
 
         # -------------------------------------------------------------
-        # TAB 3: Alert Grouping & Cooldowns
+        # TAB 4: Alert Grouping & Cooldowns
         # -------------------------------------------------------------
         tab_alerts = QWidget()
         v_al = QVBoxLayout(tab_alerts)
@@ -197,7 +254,7 @@ class SettingsWidget(QWidget):
         self.tabs.addTab(tab_alerts, "🚨 Alert Grouping")
 
         # -------------------------------------------------------------
-        # TAB 4: Threat Intelligence & Privacy
+        # TAB 5: Threat Intelligence & Privacy
         # -------------------------------------------------------------
         tab_threat = QWidget()
         v_ti = QVBoxLayout(tab_threat)
@@ -243,6 +300,12 @@ class SettingsWidget(QWidget):
         v_ti.addStretch()
         self.tabs.addTab(tab_threat, "🛡 Threat Intelligence")
 
+        # -------------------------------------------------------------
+        # TAB 6: Analyzer Performance (Feature 1E)
+        # -------------------------------------------------------------
+        self.perf_monitor_tab = PerformanceMonitorWidget()
+        self.tabs.addTab(self.perf_monitor_tab, "⚡ Analyzer Performance")
+
         main_layout.addWidget(self.tabs, 1)
 
         # Bottom Action Bar
@@ -254,6 +317,10 @@ class SettingsWidget(QWidget):
         bottom_box.addWidget(self.btn_save)
 
         main_layout.addLayout(bottom_box)
+
+    def _on_profile_selection_changed(self, profile_name: str):
+        if profile_name in PROFILES:
+            self.lbl_profile_desc.setText(PROFILES[profile_name].description)
 
     def _on_preset_changed(self, index):
         if index > 0:
@@ -267,6 +334,12 @@ class SettingsWidget(QWidget):
         else:
             self.selected_interface = "Any"
         self.bpf_filter = self.bpf_input.text().strip()
+        self.selected_profile = self.cmb_profile.currentText()
+
+        # Persist Profile & Refresh settings
+        self.db.set_setting("capture_profile", self.selected_profile)
+        self.db.set_setting("gui_fps_target", self.spin_fps.value())
+        self.db.set_setting("table_batch_ms", self.spin_batch_ms.value())
 
         # Persist Anomaly Settings
         self.db.set_setting("z_score_threshold", self.spin_z_score.value())
@@ -282,8 +355,8 @@ class SettingsWidget(QWidget):
             virustotal_key=self.txt_virustotal.text().strip()
         )
 
-        self.settings_applied.emit(self.selected_interface, self.bpf_filter)
-        QMessageBox.information(self, "Settings Saved", "Configuration successfully saved and applied.")
+        self.settings_applied.emit(self.selected_interface, self.bpf_filter, self.selected_profile)
+        QMessageBox.information(self, "Settings Saved", f"Configuration applied. Active Profile: '{self.selected_profile}'.")
 
 
 class SettingsDialog(QDialog):
@@ -291,14 +364,15 @@ class SettingsDialog(QDialog):
     def __init__(self, parent=None, current_iface=None, current_bpf=""):
         super().__init__(parent)
         self.setWindowTitle("Network Analyzer — Configuration Dialog")
-        self.resize(600, 440)
+        self.resize(700, 520)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         self.widget = SettingsWidget(self, current_iface, current_bpf)
         layout.addWidget(self.widget)
         self.widget.settings_applied.connect(self._on_applied)
 
-    def _on_applied(self, iface: str, bpf: str):
+    def _on_applied(self, iface: str, bpf: str, profile: str = "Balanced"):
         self.selected_interface = iface
         self.bpf_filter = bpf
+        self.selected_profile = profile
         self.accept()

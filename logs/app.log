@@ -115,3 +115,39 @@
 2026-10-25 22:41:39,135 - NetworkTrafficAnalyzer - INFO - Starting capture on interface: Wi-Fi (Filter: '')
 2026-10-25 22:41:54,249 - NetworkTrafficAnalyzer - INFO - Stop capture requested.
 2026-10-25 22:41:54,291 - NetworkTrafficAnalyzer - INFO - Capture stopped.
+2026-10-27 19:22:42,940 - NetworkTrafficAnalyzer - INFO - Initialized incident database at logs/test_analyzer.db
+2026-10-27 19:22:42,941 - NetworkTrafficAnalyzer - INFO - Initialized AlertManager with persistent SQLite storage and deduplication
+2026-10-27 19:22:42,948 - NetworkTrafficAnalyzer - INFO - Initialized ConnectionTracker (capacity=20000, udp_timeout=30.0s)
+2026-10-27 19:22:42,952 - NetworkTrafficAnalyzer - INFO - Initialized DNSMonitor (capacity=5000)
+2026-10-27 19:22:42,954 - NetworkTrafficAnalyzer - INFO - Initialized IncidentManager
+2026-10-27 19:37:38,171 - NetworkTrafficAnalyzer - INFO - Initialized incident database at logs/test_analyzer.db
+2026-10-27 19:37:38,174 - NetworkTrafficAnalyzer - INFO - Initialized AlertManager with persistent SQLite storage and deduplication
+2026-10-27 19:37:38,192 - NetworkTrafficAnalyzer - INFO - Initialized ConnectionTracker (capacity=20000, udp_timeout=30.0s)
+2026-10-27 19:37:38,194 - NetworkTrafficAnalyzer - INFO - Initialized DNSMonitor (capacity=5000)
+2026-10-27 19:37:38,195 - NetworkTrafficAnalyzer - INFO - Initialized IncidentManager
+2026-10-27 19:37:38,278 - NetworkTrafficAnalyzer - INFO - Offline PCAP analysis completed for test_capture.pcap: 25 packets processed.
+2026-10-27 19:37:56,656 - NetworkTrafficAnalyzer - INFO - Initialized incident database at logs\analyzer.db
+2026-10-27 19:37:56,662 - NetworkTrafficAnalyzer - INFO - Initialized AlertManager with persistent SQLite storage and deduplication
+2026-10-27 19:37:56,808 - NetworkTrafficAnalyzer - INFO - Initialized ConnectionTracker (capacity=20000, udp_timeout=30.0s)
+2026-10-27 19:38:26,115 - NetworkTrafficAnalyzer - INFO - Initialized incident database at logs\analyzer.db
+2026-10-27 19:38:26,116 - NetworkTrafficAnalyzer - INFO - Initialized AlertManager with persistent SQLite storage and deduplication
+2026-10-27 19:38:26,212 - NetworkTrafficAnalyzer - INFO - Initialized ConnectionTracker (capacity=20000, udp_timeout=30.0s)
+2026-10-27 19:38:26,258 - NetworkTrafficAnalyzer - INFO - Initialized DNSMonitor (capacity=5000)
+2026-10-27 19:38:26,288 - NetworkTrafficAnalyzer - INFO - Initialized IncidentManager
+2026-10-27 19:38:42,173 - NetworkTrafficAnalyzer - INFO - Initialized incident database at logs\analyzer.db
+2026-10-27 19:38:42,174 - NetworkTrafficAnalyzer - INFO - Initialized AlertManager with persistent SQLite storage and deduplication
+2026-10-27 19:38:42,268 - NetworkTrafficAnalyzer - INFO - Initialized ConnectionTracker (capacity=20000, udp_timeout=30.0s)
+2026-10-27 19:38:42,303 - NetworkTrafficAnalyzer - INFO - Initialized DNSMonitor (capacity=5000)
+2026-10-27 19:38:42,333 - NetworkTrafficAnalyzer - INFO - Initialized IncidentManager
+2026-10-27 19:39:43,126 - NetworkTrafficAnalyzer - INFO - Initialized incident database at logs/test_analyzer.db
+2026-10-27 19:39:43,127 - NetworkTrafficAnalyzer - INFO - Initialized AlertManager with persistent SQLite storage and deduplication
+2026-10-27 19:39:43,132 - NetworkTrafficAnalyzer - INFO - Initialized ConnectionTracker (capacity=20000, udp_timeout=30.0s)
+2026-10-27 19:39:43,135 - NetworkTrafficAnalyzer - INFO - Initialized DNSMonitor (capacity=5000)
+2026-10-27 19:39:43,137 - NetworkTrafficAnalyzer - INFO - Initialized IncidentManager
+2026-10-27 19:39:43,263 - NetworkTrafficAnalyzer - INFO - Offline PCAP analysis completed for test_capture.pcap: 25 packets processed.
+2026-10-27 19:42:59,796 - NetworkTrafficAnalyzer - INFO - Initialized incident database at logs\analyzer.db
+2026-10-27 19:42:59,797 - NetworkTrafficAnalyzer - INFO - Initialized AlertManager with persistent SQLite storage and deduplication
+2026-10-27 19:43:01,216 - NetworkTrafficAnalyzer - INFO - Initialized ConnectionTracker (capacity=20000, udp_timeout=30.0s)
+2026-10-27 19:43:01,257 - NetworkTrafficAnalyzer - INFO - Initialized DNSMonitor (capacity=5000)
+2026-10-27 19:43:01,292 - NetworkTrafficAnalyzer - INFO - Initialized IncidentManager
+2026-10-27 19:43:02,183 - NetworkTrafficAnalyzer - INFO - Starting Network Health diagnostic check (DNS Target: google.com)

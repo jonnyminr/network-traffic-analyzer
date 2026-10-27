@@ -299,6 +299,60 @@ class AlertManager(QObject):
                     return True
         return False
 
+    def mark_false_positive(self, alert_id: str, reason: str = "") -> bool:
+        """Marks alert as a false positive with reason and persists rule in database."""
+        with self.lock:
+            for alert in self.alerts_list:
+                if alert.alert_id == alert_id:
+                    alert.status = "False Positive"
+                    if reason:
+                        alert.notes = f"[False Positive]: {reason}"
+                    self.db.save_false_positive(
+                        alert_id=alert_id,
+                        category=alert.category,
+                        src_ip=alert.src_ip,
+                        dst_ip=alert.dst_ip,
+                        reason=reason
+                    )
+                    self.alert_updated.emit(alert.to_dict())
+                    return True
+        # If not in active memory, still persist to DB
+        return self.db.save_false_positive(alert_id=alert_id, reason=reason)
+
+    def get_alert_evidence(self, alert_id: str) -> Dict[str, Any]:
+        """Collects full evidence bundle for an alert without fabricating data."""
+        alert = self.get_alert_by_id(alert_id)
+        if not alert:
+            return {}
+
+        src_ip = alert.get("src_ip", "")
+        dst_ip = alert.get("dst_ip", "")
+
+        # Fetch correlated active flows from ConnectionTracker
+        from core.connection_tracker import ConnectionTracker
+        tracker = ConnectionTracker()
+        related_flows = []
+        if src_ip and src_ip not in ("Unknown", "Multiple"):
+            related_flows.extend(tracker.get_flows_for_ip(src_ip))
+        if dst_ip and dst_ip not in ("Unknown", "Multiple", "Network", "Local", "Local/Target"):
+            for f in tracker.get_flows_for_ip(dst_ip):
+                if f not in related_flows:
+                    related_flows.append(f)
+
+        # Fetch historical occurrences from database
+        occurrences = self.db.get_alert_occurrences(alert_id)
+
+        return {
+            "alert": alert,
+            "related_flows": related_flows[:20],
+            "occurrences": occurrences,
+            "time_range": {
+                "first_seen": alert.get("first_seen"),
+                "last_seen": alert.get("last_seen"),
+                "duration_seconds": max(0.0, alert.get("last_seen", 0) - alert.get("first_seen", 0))
+            }
+        }
+
     def get_alert_by_id(self, alert_id: str) -> Optional[Dict[str, Any]]:
         with self.lock:
             for alert in self.alerts_list:

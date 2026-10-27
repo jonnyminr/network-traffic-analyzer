@@ -20,6 +20,7 @@ class AlertsPanel(QWidget):
     """
     launch_investigation_requested = Signal(dict)
     filter_connections_requested = Signal(str, str)
+    inspect_packets_requested = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -299,10 +300,12 @@ class AlertsPanel(QWidget):
             dlg = AlertDetailsDialog(alert_data, parent=self)
             dlg.launch_investigation_requested.connect(self.launch_investigation_requested.emit)
             dlg.filter_connections_requested.connect(self.filter_connections_requested.emit)
+            dlg.inspect_packets_requested.connect(self.inspect_packets_requested.emit)
             dlg.exec()
             self.refresh_table()
 
     def _show_context_menu(self, pos):
+        from PySide6.QtWidgets import QInputDialog
         row = self.table.rowAt(pos.y())
         if row < 0 or not hasattr(self, "_current_filtered") or row >= len(self._current_filtered):
             return
@@ -315,7 +318,7 @@ class AlertsPanel(QWidget):
         menu.addSeparator()
         act_investigating = menu.addAction("Mark as 'Investigating'")
         act_resolve = menu.addAction("Mark as 'Resolved'")
-        act_fp = menu.addAction("Mark as 'False Positive'")
+        act_fp = menu.addAction("Mark as 'False Positive' with Reason")
         menu.addSeparator()
         act_launch_inv = menu.addAction("🚀 Launch Formal Investigation")
 
@@ -332,8 +335,13 @@ class AlertsPanel(QWidget):
             self.manager.update_alert_status(alert["alert_id"], "Resolved")
             self.refresh_table()
         elif chosen == act_fp:
-            self.manager.update_alert_status(alert["alert_id"], "False Positive")
-            self.refresh_table()
+            reason, ok = QInputDialog.getText(
+                self, "Mark False Positive",
+                f"Enter reason or justification for marking {alert['alert_id']} as False Positive:"
+            )
+            if ok:
+                self.manager.mark_false_positive(alert["alert_id"], reason.strip())
+                self.refresh_table()
         elif chosen == act_launch_inv:
             self.launch_investigation_requested.emit(alert)
 
